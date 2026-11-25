@@ -10,6 +10,7 @@ interface DishModalProps {
   onClose: () => void;
   onAdd: (item: MenuItem, selectedOption?: string, quantity?: number) => void;
   onRecordOrder?: (message: string, url: string, itemCount: number) => void;
+  whatsappDigits?: string;
 }
 
 export default function DishModal({
@@ -19,6 +20,7 @@ export default function DishModal({
   onClose,
   onAdd,
   onRecordOrder,
+  whatsappDigits,
 }: DishModalProps) {
   const [imgError, setImgError] = useState(false);
   const [chosenOption, setChosenOption] = useState<string | undefined>(initialOption);
@@ -53,7 +55,7 @@ export default function DishModal({
     'Please confirm availability and pricing in PHP (₱).',
   ].join('\n');
 
-  const directWhatsAppUrl = buildWhatsAppUrl(directItemMessage);
+  const directWhatsAppUrl = buildWhatsAppUrl(directItemMessage, whatsappDigits);
 
   return (
     <div

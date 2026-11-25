@@ -37,6 +37,7 @@ interface OrderDrawerProps {
   onClear: () => void;
   onRecordOrder: (message: string, url: string, itemCount: number) => void;
   onClearSavedOrder: () => void;
+  whatsappDigits?: string;
 }
 
 function formatSavedTime(isoString: string): string {
@@ -63,6 +64,7 @@ export default function OrderDrawer({
   onClear,
   onRecordOrder,
   onClearSavedOrder,
+  whatsappDigits,
 }: OrderDrawerProps) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');

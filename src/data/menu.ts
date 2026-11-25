@@ -1,9 +1,7 @@
-export type MenuCategory =
-  | 'Soups & Traditional Meals'
-  | 'Grilled & Roasted'
-  | 'Rice & Main Dishes'
-  | 'Bakery & Snacks'
-  | 'Cakes & Desserts';
+// Categories are dynamic once managed from the admin dashboard, so this is a
+// plain string. The static list below mirrors the current menu exactly and is
+// used as the offline fallback when Supabase is unavailable.
+export type MenuCategory = string;
 
 export const MENU_CATEGORIES: MenuCategory[] = [
   'Soups & Traditional Meals',
@@ -37,8 +35,8 @@ export const BUSINESS_INFO = {
   pricePendingText: 'Price to be confirmed',
 } as const;
 
-export function buildWhatsAppUrl(message: string): string {
-  const baseUrl = `https://wa.me/${BUSINESS_INFO.whatsappDigits}`;
+export function buildWhatsAppUrl(message: string, digits: string = BUSINESS_INFO.whatsappDigits): string {
+  const baseUrl = `https://wa.me/${digits}`;
   const trimmed = message.trim();
   if (!trimmed) {
     return baseUrl;

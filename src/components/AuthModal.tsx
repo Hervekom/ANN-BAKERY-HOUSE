@@ -24,6 +24,7 @@ interface AuthModalProps {
   initialMode: AuthModalMode;
   onClose: () => void;
   onAuthenticated: (user: CustomerUser) => void;
+  whatsappDigits?: string;
 }
 
 export default function AuthModal({
@@ -31,6 +32,7 @@ export default function AuthModal({
   initialMode,
   onClose,
   onAuthenticated,
+  whatsappDigits,
 }: AuthModalProps) {
   const [mode, setMode] = useState<AuthModalMode>(initialMode);
   const [name, setName] = useState('');
@@ -212,7 +214,7 @@ export default function AuthModal({
               <p>{successMessage}</p>
             </div>
             <a
-              href={`https://wa.me/${BUSINESS_INFO.whatsappDigits}`}
+              href={`https://wa.me/${whatsappDigits ?? BUSINESS_INFO.whatsappDigits}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 font-semibold text-[#3C5826] underline underline-offset-4 hover:text-[#AF140B]"

@@ -4,7 +4,6 @@ import {
   Clock,
   Edit3,
   MessageSquarePlus,
-  ShieldCheck,
   Star,
   Trash2,
 } from 'lucide-react';
@@ -20,7 +19,6 @@ interface ReviewsSectionProps {
   myReviews: CustomerReview[];
   loadingReviews: boolean;
   onOpenAuth: (mode: 'login' | 'register') => void;
-  onOpenAdmin: () => void;
   onRefreshReviews: () => Promise<void>;
 }
 
@@ -62,7 +60,6 @@ export default function ReviewsSection({
   myReviews,
   loadingReviews,
   onOpenAuth,
-  onOpenAdmin,
   onRefreshReviews,
 }: ReviewsSectionProps) {
   const [rating, setRating] = useState(5);
@@ -577,18 +574,6 @@ export default function ReviewsSection({
                 ))}
               </div>
             )}
-
-            {/* Admin Moderation Access Link */}
-            <div className="mt-5 flex justify-end">
-              <button
-                type="button"
-                onClick={onOpenAdmin}
-                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-[#E8DFC8] bg-[#FFFDF9] px-3.5 py-1.5 text-xs font-semibold text-[#5C5952] transition-colors hover:border-[#3C5826] hover:text-[#3C5826]"
-              >
-                <ShieldCheck className="h-4 w-4 text-[#3C5826]" aria-hidden="true" />
-                <span>Review Moderation</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>

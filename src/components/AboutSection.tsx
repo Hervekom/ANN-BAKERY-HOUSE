@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, MapPin, UtensilsCrossed } from 'lucide-react';
 import { BUSINESS_INFO } from '../data/menu';
+import type { SiteSettings } from '../lib/content';
 
 const OFFERINGS = [
   {
@@ -39,8 +40,18 @@ const ABOUT_PHOTOS = {
   },
 } as const;
 
-export default function AboutSection() {
+export default function AboutSection({ settings }: { settings?: SiteSettings }) {
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+
+  const businessName = settings?.business_name || BUSINESS_INFO.name;
+  const address = settings?.address || BUSINESS_INFO.address;
+  const heading = settings?.about.heading || 'More Than a Bakery, A Taste of Home';
+  const body =
+    settings?.about.body ||
+    'At ANN BAKERY HOUSE, we bring together the warmth of homemade baking and the pleasure of delicious meals. From freshly baked delights to flavorful traditional dishes, every offering is made to bring people together.';
+  const mainImage = settings?.about.main_image || ABOUT_PHOTOS.main.src;
+  const bakeryImage = settings?.about.bakery_image || ABOUT_PHOTOS.bakery.src;
+  const mealImage = settings?.about.meal_image || ABOUT_PHOTOS.meal.src;
 
   const markFailed = (key: string) => {
     setFailedImages((prev) => ({ ...prev, [key]: true }));
@@ -73,11 +84,11 @@ export default function AboutSection() {
               id="about-heading"
               className="font-display text-balance mt-2.5 text-3xl font-bold leading-[1.12] text-[#111111] sm:text-4xl md:text-5xl"
             >
-              More Than a Bakery, A Taste of Home
+              {heading}
             </h2>
 
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-[#5C5952] sm:text-base">
-              At ANN BAKERY HOUSE, we bring together the warmth of homemade baking and the pleasure of delicious meals. From freshly baked delights to flavorful traditional dishes, every offering is made to bring people together.
+              {body}
             </p>
 
             {/* Official Address & Menu Navigation */}
@@ -89,10 +100,10 @@ export default function AboutSection() {
                 />
                 <div>
                   <p className="font-semibold text-[#111111]">
-                    {BUSINESS_INFO.name}
+                    {businessName}
                   </p>
                   <p className="mt-0.5 leading-relaxed">
-                    {BUSINESS_INFO.address}
+                    {address}
                   </p>
                 </div>
               </div>
@@ -120,7 +131,7 @@ export default function AboutSection() {
             <div className="aspect-[16/10] w-full overflow-hidden rounded-xl border border-[#E8DFC8] bg-[#FAF6EE]">
               {!failedImages.main ? (
                 <img
-                  src={ABOUT_PHOTOS.main.src}
+                  src={mainImage}
                   alt={ABOUT_PHOTOS.main.alt}
                   referrerPolicy="no-referrer"
                   loading="lazy"
@@ -139,7 +150,7 @@ export default function AboutSection() {
               <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border border-[#E8DFC8] bg-[#FAF6EE]">
                 {!failedImages.bakery ? (
                   <img
-                    src={ABOUT_PHOTOS.bakery.src}
+                    src={bakeryImage}
                     alt={ABOUT_PHOTOS.bakery.alt}
                     referrerPolicy="no-referrer"
                     loading="lazy"
@@ -157,7 +168,7 @@ export default function AboutSection() {
               <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border border-[#E8DFC8] bg-[#FAF6EE]">
                 {!failedImages.meal ? (
                   <img
-                    src={ABOUT_PHOTOS.meal.src}
+                    src={mealImage}
                     alt={ABOUT_PHOTOS.meal.alt}
                     referrerPolicy="no-referrer"
                     loading="lazy"

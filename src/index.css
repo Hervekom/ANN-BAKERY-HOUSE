@@ -46,3 +46,17 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/*
+ * Mobile input zoom fix.
+ * iOS Safari (and some Android browsers) auto-zoom the viewport whenever a
+ * focused form control has a computed font-size below 16px. Forcing 16px on
+ * small screens keeps forms usable without disabling user zoom.
+ */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

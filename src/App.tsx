@@ -16,17 +16,15 @@ import AboutSection from './components/AboutSection';
 import ReviewsSection from './components/ReviewsSection';
 import AuthModal, { AuthModalMode } from './components/AuthModal';
 import CustomerProfileModal from './components/CustomerProfileModal';
-import AdminModerationModal from './components/AdminModerationModal';
 import ContactSection from './components/ContactSection';
 import {
-  BUSINESS_INFO,
-  MENU_CATEGORIES,
   MENU_ITEMS,
   MenuCategory,
   MenuItem,
   buildWhatsAppUrl,
   getCartKey,
 } from './data/menu';
+import { usePublicContent } from './hooks/usePublicContent';
 import {
   fetchApprovedReviews,
   fetchMyReviews,
@@ -73,7 +71,6 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<CustomerUser | null>(null);
   const [authModalMode, setAuthModalMode] = useState<AuthModalMode | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
   const [approvedReviews, setApprovedReviews] = useState<CustomerReview[]>([]);
   const [approvedCount, setApprovedCount] = useState(0);
   const [averageRating, setAverageRating] = useState<number | null>(null);
@@ -121,24 +118,26 @@ export default function App() {
     setMyReviews([]);
   };
 
+  const { settings, items, categories } = usePublicContent();
+
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { All: MENU_ITEMS.length };
-    for (const cat of MENU_CATEGORIES) {
-      counts[cat] = MENU_ITEMS.filter((item) => item.category === cat).length;
+    const counts: Record<string, number> = { All: items.length };
+    for (const cat of categories) {
+      counts[cat] = items.filter((item) => item.category === cat).length;
     }
     return counts;
-  }, []);
+  }, [items, categories]);
 
   const visibleCategories = useMemo(() => {
     const base =
       activeCategory === 'All'
-        ? MENU_CATEGORIES
-        : MENU_CATEGORIES.filter((cat) => cat === activeCategory);
+        ? categories
+        : categories.filter((cat) => cat === activeCategory);
     if (!normalizedQuery) return base;
     return base.filter((cat) =>
-      MENU_ITEMS.some(
+      items.some(
         (item) =>
           item.category === cat &&
           (item.name.toLowerCase().includes(normalizedQuery) ||
@@ -146,7 +145,7 @@ export default function App() {
             item.category.toLowerCase().includes(normalizedQuery)),
       ),
     );
-  }, [activeCategory, normalizedQuery]);
+  }, [activeCategory, normalizedQuery, items, categories]);
 
   const bagEntries: BagEntry[] = useMemo(() => Object.values(bag), [bag]);
 
@@ -239,11 +238,11 @@ export default function App() {
     setLastSavedOrder(null);
   };
 
-  const quickWhatsAppUrl = 'https://wa.me/639541438031';
+  const quickWhatsAppUrl = `https://wa.me/${settings.whatsapp_digits}`;
 
   const customInquiryMessage = useMemo(() => {
     const lines = [
-      `Hello ${BUSINESS_INFO.name}!`,
+      `Hello ${settings.business_name}!`,
       '',
       'I would like to place an order or request information.',
     ];
@@ -251,7 +250,7 @@ export default function App() {
     if (inquiryPhone.trim()) lines.push(`Phone number: ${inquiryPhone.trim()}`);
     if (inquiryDate) lines.push(`Preferred date: ${inquiryDate}`);
     lines.push(
-      `Preferred arrangement: ${inquiryType} (subject to confirmation by ${BUSINESS_INFO.name})`,
+      `Preferred arrangement: ${inquiryType} (subject to confirmation by ${settings.business_name})`,
     );
 
     if (bagEntries.length > 0) {
@@ -273,11 +272,12 @@ export default function App() {
     inquiryName,
     inquiryPhone,
     inquiryType,
+    settings.business_name,
   ]);
 
   const customInquiryUrl = useMemo(
-    () => buildWhatsAppUrl(customInquiryMessage),
-    [customInquiryMessage],
+    () => buildWhatsAppUrl(customInquiryMessage, settings.whatsapp_digits),
+    [customInquiryMessage, settings.whatsapp_digits],
   );
 
   const handlePreOrderSubmit = (event: React.FormEvent) => {
@@ -299,7 +299,7 @@ export default function App() {
 
         <main>
           {/* 1. Immersive Hero Section */}
-          <HeroSection />
+          <HeroSection settings={settings} />
 
           {/* 2. Official Menu Showcase Section */}
           <section id="menu" className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 md:py-24">
@@ -350,7 +350,7 @@ export default function App() {
                 aria-label="Filter menu by category"
                 className="no-scrollbar mt-5 -mx-4 flex snap-x items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:mt-6 sm:flex-wrap sm:overflow-visible sm:rounded-xl sm:border sm:border-[#E8DFC8] sm:bg-[#FFFDF9] sm:p-1.5 sm:shadow-xs"
               >
-                {(['All', ...MENU_CATEGORIES] as CategoryFilter[]).map((category) => {
+                {(['All', ...categories] as CategoryFilter[]).map((category) => {
                   const isActive = activeCategory === category;
                   const count = categoryCounts[category] ?? 0;
                   return (
@@ -403,7 +403,7 @@ export default function App() {
             ) : (
               <div className="mt-8 space-y-12 sm:mt-12 sm:space-y-16">
                 {visibleCategories.map((category) => {
-                  const itemsInCategory = MENU_ITEMS.filter(
+                  const itemsInCategory = items.filter(
                     (item) =>
                       item.category === category &&
                       (!normalizedQuery ||
@@ -507,7 +507,7 @@ export default function App() {
           </section>
 
           {/* 3. About Us Section */}
-          <AboutSection />
+          <AboutSection settings={settings} />
 
           {/* 4. Customer Reviews & Moderation Section */}
           <ReviewsSection
@@ -518,7 +518,6 @@ export default function App() {
             myReviews={myReviews}
             loadingReviews={loadingReviews}
             onOpenAuth={(mode) => setAuthModalMode(mode)}
-            onOpenAdmin={() => setAdminOpen(true)}
             onRefreshReviews={() => refreshReviews(currentUser)}
           />
 
@@ -540,12 +539,12 @@ export default function App() {
                 <div className="mt-6 space-y-3 border-t border-[#E8DFC8] pt-6 text-sm text-[#5C5952]">
                   <p>
                     <strong className="font-semibold text-[#111111]">Pickup Point:</strong>{' '}
-                    {BUSINESS_INFO.address}
+                    {settings.address}
                   </p>
                   <p>
                     <strong className="font-semibold text-[#111111]">WhatsApp Line:</strong>{' '}
                     <span className="tabular-nums font-semibold text-[#AF140B]">
-                      {BUSINESS_INFO.whatsappDisplay}
+                      {settings.whatsapp_display}
                     </span>
                   </p>
                   <p>
@@ -717,7 +716,7 @@ export default function App() {
                         <p className="mt-0.5 text-xs text-[#5C5952]">
                           Click &ldquo;Send Directly on WhatsApp&rdquo; above to open your pre-filled message to{' '}
                           <span className="tabular-nums font-semibold text-[#AF140B]">
-                            {BUSINESS_INFO.whatsappDisplay}
+                            {settings.whatsapp_display}
                           </span>
                           .
                         </p>
@@ -731,13 +730,13 @@ export default function App() {
           </section>
 
           {/* 5. Contact & Location Section */}
-          <ContactSection />
+          <ContactSection settings={settings} />
         </main>
 
         <footer className="border-t border-[#FDD364]/25 bg-[#0A0A0A] py-5 text-center text-xs text-[#FAF6EE]/80">
           <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 sm:flex-row sm:px-6">
             <p>
-              &copy; {new Date().getFullYear()} {BUSINESS_INFO.name}. All rights reserved.
+              &copy; {new Date().getFullYear()} {settings.business_name}. All rights reserved.
             </p>
             <a
               href={quickWhatsAppUrl}
@@ -745,7 +744,7 @@ export default function App() {
               rel="noopener noreferrer"
               className="tabular-nums text-[#FDD364] hover:underline"
             >
-              WhatsApp: {BUSINESS_INFO.whatsappDisplay}
+              WhatsApp: {settings.whatsapp_display}
             </a>
           </div>
         </footer>
@@ -777,6 +776,7 @@ export default function App() {
           initialMode={authModalMode ?? 'login'}
           onClose={() => setAuthModalMode(null)}
           onAuthenticated={(user) => void handleAuthenticated(user)}
+          whatsappDigits={settings.whatsapp_digits}
         />
 
         <CustomerProfileModal
@@ -789,12 +789,6 @@ export default function App() {
           onJumpToReviews={() => {
             document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' });
           }}
-        />
-
-        <AdminModerationModal
-          open={adminOpen}
-          onClose={() => setAdminOpen(false)}
-          onReviewsChanged={() => void refreshReviews(currentUser)}
         />
       </div>
     </MotionConfig>
