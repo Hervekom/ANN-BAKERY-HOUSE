@@ -1,0 +1,6 @@
+{
+  "name": "ANN BAKERY HOUSE",
+  "description": "African homemade food and artisanal bakery in Taguig City, Philippines. Authentic Flavors. Homemade with Love.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
