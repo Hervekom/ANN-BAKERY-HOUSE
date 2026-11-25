@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 import { listMedia, uploadMedia, type MediaObject } from '../lib/adminData';
+import { resolveImagePath } from '../lib/content';
 import { slugify } from '../lib/format';
 import { ErrorNotice } from './notices';
 import { Banner, Button, Modal } from './ui';
@@ -152,7 +153,7 @@ export default function ImageField({
       {value ? (
         <div className="h-36 w-full overflow-hidden rounded-lg border border-[#E8DFC8] bg-[#FAF6EE]">
           <img
-            src={value}
+            src={resolveImagePath(value)}
             alt="Image preview"
             referrerPolicy="no-referrer"
             className="h-full w-full object-cover"

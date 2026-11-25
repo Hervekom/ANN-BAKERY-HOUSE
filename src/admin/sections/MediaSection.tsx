@@ -12,6 +12,7 @@ import {
   type MediaObject,
 } from '../../lib/adminData';
 import { ProductWithRelations, SiteSettingRow } from '../../lib/dbTypes';
+import { resolveImagePath } from '../../lib/content';
 import { slugify } from '../../lib/format';
 import { ErrorNotice } from '../notices';
 import { Button, Card, EmptyState, SectionTitle, Spinner, TextInput } from '../ui';
@@ -284,7 +285,7 @@ export default function MediaSection({ session }: { session: AdminSessionInfo })
                   <div className="h-32 w-full bg-[#FAF6EE]">
                     {item.mimeType?.startsWith('image/') ? (
                       <img
-                        src={item.publicUrl || publicAssetUrl(item.path)}
+                        src={resolveImagePath(item.publicUrl || publicAssetUrl(item.path))}
                         alt={item.name}
                         referrerPolicy="no-referrer"
                         className="h-full w-full object-cover"

@@ -29,6 +29,12 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
         autoRefreshToken: true,
         detectSessionInUrl: false,
       },
+      global: {
+        // Revalidate every Supabase request so content edited in the dashboard
+        // is never masked by a browser or proxy HTTP cache. Without this, a
+        // cached GET could keep serving stale public content after a save.
+        fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+      },
     })
   : null;
 

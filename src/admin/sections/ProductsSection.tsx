@@ -20,6 +20,7 @@ import {
   type ProductInput,
 } from '../../lib/adminData';
 import { CategoryRow, ProductWithRelations } from '../../lib/dbTypes';
+import { resolveImagePath } from '../../lib/content';
 import { formatPhp, slugify } from '../../lib/format';
 import { ErrorNotice, MigrationNotice } from '../notices';
 import {
@@ -280,7 +281,7 @@ export default function ProductsSection({ session }: { session: AdminSessionInfo
                   <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[#E8DFC8] bg-[#FAF6EE]">
                     {product.image_path ? (
                       <img
-                        src={product.image_path}
+                        src={resolveImagePath(product.image_path)}
                         alt=""
                         referrerPolicy="no-referrer"
                         className="h-full w-full object-cover"

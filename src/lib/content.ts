@@ -139,6 +139,50 @@ export interface PublicContentResult {
   source: 'supabase' | 'static';
 }
 
+/**
+ * Bundled image assets keyed by the same `/src/assets/...` paths used by the
+ * static defaults and by the seeded rows. Vite resolves these to hashed
+ * production URLs at build time, so the references keep working after a
+ * production build (where a literal `/src/...` path would 404). Images uploaded
+ * from the dashboard are absolute Supabase Storage URLs and pass through.
+ */
+const BUNDLED_IMAGES = import.meta.glob('/src/assets/images/*.{jpg,jpeg,png,webp,avif}', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+
+/**
+ * Resolves a stored image reference to a URL the browser can load.
+ *
+ * Legacy `/src/assets/...` references (bundled defaults and seeded rows) are
+ * mapped to their hashed production URLs. Administrator-uploaded Supabase
+ * Storage URLs (and any other absolute URL) are returned unchanged.
+ */
+export function resolveImagePath(path: string): string {
+  if (!path) return path;
+  if (path.startsWith('/src/assets/')) return BUNDLED_IMAGES[path] ?? path;
+  return path;
+}
+
+/** Rewrites every bundled image reference in a result to its production URL. */
+function withResolvedImages(result: PublicContentResult): PublicContentResult {
+  return {
+    ...result,
+    settings: {
+      ...result.settings,
+      hero: { ...result.settings.hero, image: resolveImagePath(result.settings.hero.image) },
+      about: {
+        ...result.settings.about,
+        main_image: resolveImagePath(result.settings.about.main_image),
+        bakery_image: resolveImagePath(result.settings.about.bakery_image),
+        meal_image: resolveImagePath(result.settings.about.meal_image),
+      },
+    },
+    items: result.items.map((item) => ({ ...item, image: resolveImagePath(item.image) })),
+  };
+}
+
 function staticResult(): PublicContentResult {
   return {
     settings: DEFAULT_SITE_SETTINGS,
@@ -146,6 +190,14 @@ function staticResult(): PublicContentResult {
     categories: MENU_CATEGORIES,
     source: 'static',
   };
+}
+
+/**
+ * The bundled content with its image paths already resolved. Used as the
+ * instant first-paint state (and the pre-migration fallback).
+ */
+export function staticPublicContent(): PublicContentResult {
+  return withResolvedImages(staticResult());
 }
 
 function toMenuItem(
@@ -174,7 +226,7 @@ function toMenuItem(
 }
 
 export async function loadPublicContent(): Promise<PublicContentResult> {
-  if (!supabase) return staticResult();
+  if (!supabase) return staticPublicContent();
 
   try {
     const [settingsRes, categoriesRes, productsRes] = await Promise.all([
@@ -187,31 +239,41 @@ export async function loadPublicContent(): Promise<PublicContentResult> {
         .order('display_order'),
     ]);
 
-    // Any missing table / error / empty catalog -> keep the bundled content.
-    if (
-      settingsRes.error ||
-      categoriesRes.error ||
-      productsRes.error ||
-      !categoriesRes.data ||
-      !productsRes.data ||
-      productsRes.data.length === 0
-    ) {
-      return staticResult();
-    }
+    // Each dataset is resolved independently. The bundled content is used ONLY
+    // when a query itself fails (e.g. the reviewed migrations have not been
+    // applied yet). A query that succeeds but returns no rows is honoured as-is,
+    // so the owner can hide items without the old menu reappearing, and a
+    // product/DB hiccup can never discard correctly-saved website content.
+    const settings =
+      !settingsRes.error && settingsRes.data
+        ? mergeSettings(settingsRes.data as Array<{ key: string; value: unknown }>)
+        : DEFAULT_SITE_SETTINGS;
 
-    const categories = categoriesRes.data as CategoryRow[];
-    const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
-    const items = (productsRes.data as Array<ProductRow & { product_options: ProductOptionRow[] | null }>).map(
-      (product) => toMenuItem(product, categoryNameById.get(product.category_id) ?? 'Menu'),
-    );
+    const categories =
+      !categoriesRes.error && categoriesRes.data ? (categoriesRes.data as CategoryRow[]) : null;
 
-    return {
-      settings: settingsRes.data ? mergeSettings(settingsRes.data as Array<{ key: string; value: unknown }>) : DEFAULT_SITE_SETTINGS,
+    const products =
+      !productsRes.error && productsRes.data
+        ? (productsRes.data as Array<ProductRow & { product_options: ProductOptionRow[] | null }>)
+        : null;
+
+    const categoryNameById = new Map((categories ?? []).map((c) => [c.id, c.name]));
+
+    const items = products
+      ? products.map((product) =>
+          toMenuItem(product, categoryNameById.get(product.category_id) ?? 'Menu'),
+        )
+      : MENU_ITEMS;
+
+    const isLive = !settingsRes.error || categories !== null || products !== null;
+
+    return withResolvedImages({
+      settings,
       items,
-      categories: categories.map((c) => c.name),
-      source: 'supabase',
-    };
+      categories: categories ? categories.map((c) => c.name) : MENU_CATEGORIES,
+      source: isLive ? 'supabase' : 'static',
+    });
   } catch {
-    return staticResult();
+    return staticPublicContent();
   }
 }
