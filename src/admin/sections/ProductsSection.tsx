@@ -450,7 +450,7 @@ export default function ProductsSection({ session }: { session: AdminSessionInfo
                   setForm((prev) => (prev ? { ...prev, image_path: next } : prev))
                 }
                 folder="products"
-                hint="Upload from your phone or computer, or pick an existing file. Max 5 MB — JPG, PNG, WebP or AVIF."
+                hint="Choose from Gallery to upload from your phone or computer, or pick an existing image. Max 5 MB — JPG, PNG, WebP or AVIF."
               />
             </div>
 

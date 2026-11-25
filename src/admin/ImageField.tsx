@@ -3,7 +3,7 @@ import { Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 import { listMedia, uploadMedia, type MediaObject } from '../lib/adminData';
 import { slugify } from '../lib/format';
 import { ErrorNotice } from './notices';
-import { Button, Modal } from './ui';
+import { Banner, Button, Modal } from './ui';
 
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -11,9 +11,13 @@ const MAX_BYTES = 5 * 1024 * 1024;
 /**
  * Reusable image control for the admin dashboard.
  *
- * Supports uploading from a phone or computer, previewing before saving,
- * replacing, removing and picking an existing file from the media library.
- * Files go to the `ann-bakery-assets` bucket under the provided folder.
+ * Two clearly separated actions:
+ *  - "Choose from Gallery"  → upload a new file from a phone gallery or computer.
+ *  - "Choose existing image" → pick a file already stored in the media library.
+ *
+ * Both update `value` (a Supabase Storage public URL) only after success, so a
+ * failed upload never destroys the currently saved image. Saving the surrounding
+ * form is what persists the new URL to the database.
  */
 export default function ImageField({
   label = 'Image',
@@ -31,18 +35,20 @@ export default function ImageField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [media, setMedia] = useState<MediaObject[]>([]);
   const [loadingMedia, setLoadingMedia] = useState(false);
 
   const handleFile = async (file: File) => {
     setError(null);
+    setSuccess(null);
     if (!ACCEPTED.includes(file.type)) {
-      setError('Use a JPG, PNG, WebP or AVIF image.');
+      setError('Unsupported format. Please choose a JPG, PNG, WebP or AVIF image.');
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError('Images must be 5 MB or smaller.');
+      setError('That image is too large. The maximum size is 5 MB.');
       return;
     }
     setBusy(true);
@@ -53,20 +59,30 @@ export default function ImageField({
     const result = await uploadMedia(path, file);
     setBusy(false);
     if (result.error || !result.data) {
-      setError(result.error ?? 'Upload failed.');
+      // Upload failed → `value` is untouched, so the previous image is kept.
+      setError(result.error ?? 'Upload failed. Your previous image was kept.');
       return;
     }
     onChange(result.data.publicUrl);
+    setSuccess('Image uploaded. Save your changes to apply it.');
+    setPickerOpen(false);
   };
 
   const openPicker = async () => {
     setPickerOpen(true);
     setLoadingMedia(true);
     setError(null);
+    setSuccess(null);
     const result = await listMedia(folder);
     setLoadingMedia(false);
     if (result.error) setError(result.error);
     setMedia(result.data ?? []);
+  };
+
+  const chooseExisting = (item: MediaObject) => {
+    onChange(item.publicUrl);
+    setSuccess('Existing image selected. Save your changes to apply it.');
+    setPickerOpen(false);
   };
 
   return (
@@ -78,29 +94,34 @@ export default function ImageField({
         <Button
           type="button"
           variant="secondary"
-          className="min-h-[38px] px-3 text-xs"
+          className="min-h-[40px] px-3 text-xs"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
         >
           <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-          {busy ? 'Uploading…' : value ? 'Replace image' : 'Upload image'}
+          {busy ? 'Uploading…' : 'Choose from Gallery'}
         </Button>
         <Button
           type="button"
           variant="secondary"
-          className="min-h-[38px] px-3 text-xs"
+          className="min-h-[40px] px-3 text-xs"
           disabled={busy}
           onClick={() => void openPicker()}
         >
           <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          Choose from library
+          Choose existing image
         </Button>
         {value && (
           <Button
             type="button"
             variant="danger"
-            className="min-h-[38px] px-3 text-xs"
-            onClick={() => onChange('')}
+            className="min-h-[40px] px-3 text-xs"
+            disabled={busy}
+            onClick={() => {
+              onChange('');
+              setError(null);
+              setSuccess(null);
+            }}
           >
             <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
             Remove
@@ -109,7 +130,7 @@ export default function ImageField({
         <input
           ref={inputRef}
           type="file"
-          accept={ACCEPTED.join(',')}
+          accept="image/*"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -118,6 +139,15 @@ export default function ImageField({
           }}
         />
       </div>
+
+      {busy && (
+        <div role="status" aria-live="polite" className="space-y-1.5">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E8DFC8]">
+            <div className="h-full w-1/2 animate-pulse rounded-full bg-[#AF140B]" />
+          </div>
+          <span className="block text-[11px] text-[#5C5952]">Uploading image…</span>
+        </div>
+      )}
 
       {value ? (
         <div className="h-36 w-full overflow-hidden rounded-lg border border-[#E8DFC8] bg-[#FAF6EE]">
@@ -135,10 +165,27 @@ export default function ImageField({
       )}
 
       {value && <p className="break-all text-[11px] text-[#5C5952]">{value}</p>}
+      {success && <Banner kind="success">{success}</Banner>}
       {error && <ErrorNotice message={error} />}
 
       {pickerOpen && (
-        <Modal title="Choose an image" onClose={() => setPickerOpen(false)} wide>
+        <Modal title="Choose existing image" onClose={() => setPickerOpen(false)} wide>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-[#5C5952]">
+              Files already in the media library ({folder || 'root'}).
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="min-h-[40px] px-3 text-xs"
+              disabled={busy}
+              onClick={() => inputRef.current?.click()}
+            >
+              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+              Upload new image
+            </Button>
+          </div>
+
           {loadingMedia ? (
             <p className="py-6 text-center text-sm text-[#5C5952]">Loading…</p>
           ) : media.length === 0 ? (
@@ -151,11 +198,10 @@ export default function ImageField({
                 <button
                   key={item.path}
                   type="button"
-                  onClick={() => {
-                    onChange(item.publicUrl);
-                    setPickerOpen(false);
-                  }}
-                  className="overflow-hidden rounded-lg border border-[#E8DFC8] bg-[#FAF6EE] text-left hover:border-[#FD8F00]"
+                  onClick={() => chooseExisting(item)}
+                  className={`overflow-hidden rounded-lg border bg-[#FAF6EE] text-left hover:border-[#FD8F00] ${
+                    value === item.publicUrl ? 'border-[#AF140B] ring-2 ring-[#AF140B]/30' : 'border-[#E8DFC8]'
+                  }`}
                 >
                   <img
                     src={item.publicUrl}

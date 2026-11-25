@@ -211,12 +211,12 @@ export default function MediaSection({ session }: { session: AdminSessionInfo })
             </select>
             <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
               <Upload className="h-4 w-4" aria-hidden="true" />
-              {uploading ? 'Uploading…' : 'Upload image'}
+              {uploading ? 'Uploading…' : 'Upload new image'}
             </Button>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif"
+              accept="image/*"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -227,7 +227,7 @@ export default function MediaSection({ session }: { session: AdminSessionInfo })
             <input
               ref={replaceInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif"
+              accept="image/*"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -262,7 +262,7 @@ export default function MediaSection({ session }: { session: AdminSessionInfo })
           <EmptyState
             title="No files in this folder"
             description="Upload a JPG, PNG, WebP or AVIF image (max 5 MB)."
-            action={<Button onClick={() => fileInputRef.current?.click()}>Upload image</Button>}
+            action={<Button onClick={() => fileInputRef.current?.click()}>Upload new image</Button>}
           />
         ) : filtered.length === 0 ? (
           <EmptyState
