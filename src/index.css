@@ -49,10 +49,28 @@
 
 /*
  * Mobile input zoom fix.
- * iOS Safari (and some Android browsers) auto-zoom the viewport whenever a
- * focused form control has a computed font-size below 16px. Forcing 16px on
- * small screens keeps forms usable without disabling user zoom.
+ *
+ * iOS Safari (and some Android browsers) automatically zoom the viewport when a
+ * focused form control has a computed font-size below 16px. Every control in
+ * this app is authored at 14px (Tailwind `text-sm`), which triggers that zoom.
+ *
+ * A width-only media query is not enough: a phone in landscape and tablets are
+ * wider than 767px, so the zoom would still fire there. We therefore raise the
+ * font size on touch devices at ANY width/orientation, and keep a width-based
+ * fallback for browser emulation and narrow hybrid devices.
+ *
+ * User zoom is intentionally left enabled — the viewport meta keeps
+ * `width=device-width, initial-scale=1.0` with no `maximum-scale`/`user-scalable`.
  */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Width-based fallback (device emulation, narrow hybrid devices). */
 @media (max-width: 767px) {
   input,
   textarea,
