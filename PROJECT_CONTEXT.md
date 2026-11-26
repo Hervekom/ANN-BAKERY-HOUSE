@@ -248,29 +248,36 @@ add items → refresh → bag and quantities remain; change quantity / remove / 
 
 ---
 
-## 6.2 FIXED — Blank page when confirming the order → WhatsApp (2026-11-26)
+## 6.2 CHANGED — Checkout no longer redirects to WhatsApp (2026-11-26)
 
-**Symptom:** confirming the cart opened a blank page before redirecting to
-WhatsApp.
+**History:** confirming the cart used to open a blank WhatsApp tab
+(`window.open('', '_blank')`) and then navigate it to WhatsApp — a blank flash
+followed by a hard redirect away from the site (poor UX). An interim fix rendered
+a branded waiting page into that tab; it is now **superseded**.
 
-**Root cause:** `handleSubmitOrder` in `src/components/OrderDrawer.tsx` opens the
-WhatsApp tab **synchronously** inside the click gesture (`window.open('', '_blank')`)
-— required so the browser does not block it and so WhatsApp opens only after the
-order is recorded. That new tab is `about:blank`, so the customer saw a blank page
-for the (brief) duration of the `place_order` RPC before `waWindow.location.href =
-finalUrl` navigated it to WhatsApp.
+**Current behaviour (final):** confirming the order records it in Supabase
+(`place_order`) and shows an **on-site confirmation popup** ("Order sent!" with the
+reference number). The customer **stays on the website** — no tab is opened and
+nothing is redirected. WhatsApp is no longer opened automatically; it remains an
+optional action from the cart ("Send on WhatsApp", "Copy Order Message") and from
+the "Last Prepared WhatsApp Order" panel.
 
-**Fix:** immediately after opening the tab, write a small branded waiting screen
-(`WHATSAPP_WAITING_PAGE` constant) into it via `document.write`, wrapped in
-`try/catch` (some browsers block writing to a pre-opened window — the redirect
-still works). The behaviour is otherwise unchanged: the order is still recorded in
-Supabase **before** WhatsApp is opened, and cleaning up / error handling / the
-success panel all stay the same.
+**Implementation (`src/components/OrderDrawer.tsx`):**
+- `handleSubmitOrder` records the order then sets the new `showSuccess` state; it
+  no longer calls `window.open` / `location.href`. The now-unused
+  `WHATSAPP_WAITING_PAGE` constant was removed.
+- New success popup (`role="alertdialog"`, `z-[60]`) shows the reference and a
+  "Continue browsing" button that closes the popup and the drawer.
+- `showSuccess` resets whenever the cart signature changes.
+- Copy aligned: primary button is now "Confirm Order" (was "Confirm Order on
+  WhatsApp"); the in-drawer panel now reads "You can also send the summary … on
+  WhatsApp if you wish."
+- Ledger note: the order still reaches the bakery via the Supabase admin
+  dashboard (Orders). WhatsApp is now opt-in, never a forced redirect.
 
 **Verification:** `npm run lint` → 0 errors; `npm run build` → success. Manual:
-confirm an order → the opened tab shows "Opening WhatsApp… please wait." then
-lands on WhatsApp (no blank page); a failed save still closes the tab and shows
-the in-app error.
+confirm an order → the popup appears on the same page with the reference; no new
+tab and no redirect.
 
 ---
 

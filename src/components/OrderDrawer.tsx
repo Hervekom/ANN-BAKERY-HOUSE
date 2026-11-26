@@ -66,18 +66,6 @@ function formatSavedTime(isoString: string): string {
   }
 }
 
-/**
- * Written into the WhatsApp tab the instant it is opened, so the customer never
- * sees a blank page while the order is being recorded. It is replaced by the
- * WhatsApp conversation as soon as the order is saved.
- */
-const WHATSAPP_WAITING_PAGE = `<!doctype html><html><head><meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Opening WhatsApp…</title></head>
-<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#FAF6EE;color:#111111;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
-<p style="font-size:15px;font-weight:600">Opening WhatsApp… please wait.</p>
-</body></html>`;
-
 export default function OrderDrawer({
   open,
   entries,
@@ -106,6 +94,7 @@ export default function OrderDrawer({
   const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [recordingUnavailable, setRecordingUnavailable] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const signature = useMemo(
     () => cartSignature(entries.map((entry) => ({ key: entry.key, quantity: entry.quantity }))),
@@ -117,6 +106,7 @@ export default function OrderDrawer({
     setPlacedOrder(null);
     setSubmitError(null);
     setRecordingUnavailable(false);
+    setShowSuccess(false);
   }, [signature]);
 
   useEffect(() => {
@@ -217,22 +207,6 @@ export default function OrderDrawer({
       return;
     }
 
-    // Open the WhatsApp tab synchronously (inside the click gesture) so the
-    // browser does not block it. It is navigated ONLY after the order is recorded,
-    // so a failed save never opens WhatsApp as if the order were placed. A branded
-    // waiting screen is shown immediately so the customer never sees a blank page
-    // during the (brief) recording step.
-    const waWindow = typeof window !== 'undefined' ? window.open('', '_blank') : null;
-    if (waWindow) {
-      try {
-        waWindow.document.write(WHATSAPP_WAITING_PAGE);
-        waWindow.document.close();
-      } catch {
-        // Writing to a pre-opened window is blocked in some browsers; the
-        // redirect below still works, so this is safe to ignore.
-      }
-    }
-
     setSubmitting(true);
     setSubmitError(null);
 
@@ -252,7 +226,6 @@ export default function OrderDrawer({
     setSubmitting(false);
 
     if (!result.ok) {
-      if (waWindow) waWindow.close();
       setRecordingUnavailable(result.notEnabled);
       setSubmitError(result.error);
       return;
@@ -264,12 +237,10 @@ export default function OrderDrawer({
     setPlacedOrder(order);
     setRecordingUnavailable(false);
     onRecordOrder(finalMessage, finalUrl, totalCount, order);
-
-    if (waWindow) {
-      waWindow.location.href = finalUrl;
-    } else {
-      window.open(finalUrl, '_blank', 'noopener,noreferrer');
-    }
+    // Keep the customer on the website: confirm with an on-site popup instead of
+    // redirecting to WhatsApp. The order is already recorded in Supabase, and the
+    // WhatsApp summary remains available from the cart for anyone who wants it.
+    setShowSuccess(true);
   };
 
   const handleCopySaved = async () => {
@@ -524,8 +495,8 @@ export default function OrderDrawer({
                       Your order has been recorded. Reference: {placedOrder.orderNumber}
                     </p>
                     <p className="mt-0.5 text-[#5C5952]">
-                      We opened WhatsApp so you can send the summary of order{' '}
-                      <strong className="text-[#111111]">{placedOrder.orderNumber}</strong> to ANN BAKERY HOUSE. Your order is confirmed once the bakery replies with prices and availability. If WhatsApp did not open, use the button below.
+                      You can also send the summary of order{' '}
+                      <strong className="text-[#111111]">{placedOrder.orderNumber}</strong> to ANN BAKERY HOUSE on WhatsApp if you wish. Your order is confirmed once the bakery replies with prices and availability.
                     </p>
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
                       <a
@@ -535,7 +506,7 @@ export default function OrderDrawer({
                         className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#111111] px-3 py-1.5 text-xs font-semibold text-[#FFFDF9] transition-colors hover:bg-[#2A2A2A]"
                       >
                         <MessageCircle className="h-3.5 w-3.5 text-[#FDD364]" aria-hidden="true" />
-                        <span>Reopen WhatsApp</span>
+                        <span>Send on WhatsApp</span>
                       </a>
                       <button
                         type="button"
@@ -735,7 +706,7 @@ export default function OrderDrawer({
                   className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#AF140B] px-5 py-3 text-sm font-semibold text-[#FFFDF9] shadow-sm transition-colors hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
                 >
                   <MessageCircle className="h-4 w-4 shrink-0 text-[#FDD364]" aria-hidden="true" />
-                  <span>Reopen WhatsApp</span>
+                  <span>Send on WhatsApp</span>
                 </a>
               </div>
             ) : (
@@ -753,7 +724,7 @@ export default function OrderDrawer({
                 ) : (
                   <>
                     <MessageCircle className="h-4 w-4 shrink-0 text-[#FDD364]" aria-hidden="true" />
-                    <span>Confirm Order on WhatsApp</span>
+                    <span>Confirm Order</span>
                   </>
                 )}
               </button>
@@ -761,6 +732,53 @@ export default function OrderDrawer({
           </div>
         )}
       </aside>
+
+      {/* On-site confirmation popup — the order is already recorded; the customer
+          stays on the website instead of being redirected to WhatsApp. */}
+      {showSuccess && placedOrder && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="order-success-title"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#111111]/70 p-4 backdrop-blur-xs"
+          onClick={(event) => {
+            event.stopPropagation();
+            setShowSuccess(false);
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-[#E8DFC8] bg-[#FFFDF9] p-6 text-center shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#3C5826]/10">
+              <BadgeCheck className="h-7 w-7 text-[#3C5826]" aria-hidden="true" />
+            </div>
+            <h3
+              id="order-success-title"
+              className="font-display text-2xl font-bold text-[#111111]"
+            >
+              Order sent!
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-[#5C5952]">
+              Your order has been recorded. Reference:{' '}
+              <strong className="tabular-nums text-[#111111]">
+                {placedOrder.orderNumber}
+              </strong>
+              . ANN BAKERY HOUSE will confirm the prices and availability with you.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccess(false);
+                onClose();
+              }}
+              className="mt-5 inline-flex min-h-[48px] w-full items-center justify-center rounded-lg bg-[#AF140B] px-5 py-3 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
+            >
+              Continue browsing
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
