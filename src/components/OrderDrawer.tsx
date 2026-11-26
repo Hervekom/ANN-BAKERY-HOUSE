@@ -66,6 +66,18 @@ function formatSavedTime(isoString: string): string {
   }
 }
 
+/**
+ * Written into the WhatsApp tab the instant it is opened, so the customer never
+ * sees a blank page while the order is being recorded. It is replaced by the
+ * WhatsApp conversation as soon as the order is saved.
+ */
+const WHATSAPP_WAITING_PAGE = `<!doctype html><html><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Opening WhatsApp…</title></head>
+<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#FAF6EE;color:#111111;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
+<p style="font-size:15px;font-weight:600">Opening WhatsApp… please wait.</p>
+</body></html>`;
+
 export default function OrderDrawer({
   open,
   entries,
@@ -207,8 +219,19 @@ export default function OrderDrawer({
 
     // Open the WhatsApp tab synchronously (inside the click gesture) so the
     // browser does not block it. It is navigated ONLY after the order is recorded,
-    // so a failed save never opens WhatsApp as if the order were placed.
+    // so a failed save never opens WhatsApp as if the order were placed. A branded
+    // waiting screen is shown immediately so the customer never sees a blank page
+    // during the (brief) recording step.
     const waWindow = typeof window !== 'undefined' ? window.open('', '_blank') : null;
+    if (waWindow) {
+      try {
+        waWindow.document.write(WHATSAPP_WAITING_PAGE);
+        waWindow.document.close();
+      } catch {
+        // Writing to a pre-opened window is blocked in some browsers; the
+        // redirect below still works, so this is safe to ignore.
+      }
+    }
 
     setSubmitting(true);
     setSubmitError(null);
