@@ -132,7 +132,10 @@ export interface ProductInput {
 
 export interface OptionGroupInput {
   group_label: string;
-  names: string[];
+  options: Array<{
+    name: string;
+    price_php: number | null;
+  }>;
   is_available?: boolean;
 }
 
@@ -199,13 +202,14 @@ export async function replaceProductOptions(
       const label = group.group_label.trim();
       if (!label) continue;
       let order = 1;
-      for (const rawName of group.names) {
-        const name = rawName.trim();
+      for (const opt of group.options) {
+        const name = opt.name.trim();
         if (!name) continue;
         rows.push({
           product_id: productId,
           group_label: label,
           name,
+          price_php: opt.price_php,
           display_order: order,
           is_available: group.is_available ?? true,
         });

@@ -11,12 +11,17 @@ export const MENU_CATEGORIES: MenuCategory[] = [
   'Cakes & Desserts',
 ];
 
+export interface MenuItemOption {
+  name: string;
+  pricePhp: number | null;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
   category: MenuCategory;
   pricePhp: number | null;
-  options?: string[];
+  options?: MenuItemOption[];
   optionLabel?: string;
   shortDescription: string;
   fullDescription: string;
@@ -32,7 +37,7 @@ export const BUSINESS_INFO = {
   whatsappDisplay: '+63 954 143 8031',
   whatsappDigits: '639541438031',
   currency: '₱',
-  pricePendingText: 'Price to be confirmed',
+  pricePendingText: 'Price not available',
 } as const;
 
 export function buildWhatsAppUrl(message: string, digits: string = BUSINESS_INFO.whatsappDigits): string {
@@ -64,8 +69,54 @@ export function formatPhp(amount: number | null): string {
   return `₱${amount.toLocaleString('en-PH')}`;
 }
 
+/**
+ * Calculates the price range for an item based on its base price and options.
+ */
+export function getPriceRange(item: MenuItem): { min: number | null; max: number | null } {
+  const prices: number[] = [];
+  
+  if (item.pricePhp !== null) {
+    prices.push(item.pricePhp);
+  }
+
+  if (item.options) {
+    item.options.forEach(opt => {
+      if (opt.pricePhp !== null) {
+        prices.push(opt.pricePhp);
+      }
+    });
+  }
+
+  if (prices.length === 0) {
+    return { min: null, max: null };
+  }
+
+  return {
+    min: Math.min(...prices),
+    max: Math.max(...prices),
+  };
+}
+
 export function getCartKey(itemId: string, selectedOption?: string): string {
   return selectedOption ? `${itemId}::${selectedOption}` : itemId;
+}
+
+/**
+ * Resolves the effective unit price for an item with an optional selected
+ * variant: the variant price is used when it is set, otherwise the product
+ * base price. Returns null when no price exists (never invents a price).
+ * Single source of truth for displayed prices and cart totals.
+ */
+export function getUnitPrice(item: MenuItem, selectedOption?: string): number | null {
+  const variant = selectedOption
+    ? item.options?.find((opt) => opt.name === selectedOption)
+    : undefined;
+
+  if (variant && variant.pricePhp !== null) {
+    return variant.pricePhp;
+  }
+
+  return item.pricePhp;
 }
 
 export const MENU_ITEMS: MenuItem[] = [
@@ -87,7 +138,10 @@ export const MENU_ITEMS: MenuItem[] = [
     category: 'Soups & Traditional Meals',
     pricePhp: null,
     optionLabel: 'Choose Side',
-    options: ['Rice', 'Fried Plantain'],
+    options: [
+      { name: 'Rice', pricePhp: null },
+      { name: 'Fried Plantain', pricePhp: null },
+    ],
     shortDescription:
       'Traditional homemade bitter leaf soup paired with your choice of rice or fried plantain.',
     fullDescription:
@@ -159,7 +213,10 @@ export const MENU_ITEMS: MenuItem[] = [
     category: 'Rice & Main Dishes',
     pricePhp: null,
     optionLabel: 'Choose Protein',
-    options: ['Chicken', 'Fish'],
+    options: [
+      { name: 'Chicken', pricePhp: null },
+      { name: 'Fish', pricePhp: null },
+    ],
     shortDescription:
       'Homemade fried rice served with your choice of chicken or fish.',
     fullDescription:
@@ -172,7 +229,10 @@ export const MENU_ITEMS: MenuItem[] = [
     category: 'Rice & Main Dishes',
     pricePhp: null,
     optionLabel: 'Choose Side',
-    options: ['Fried Plantain', 'Rice'],
+    options: [
+      { name: 'Fried Plantain', pricePhp: null },
+      { name: 'Rice', pricePhp: null },
+    ],
     shortDescription:
       'Homemade vegetable dish served with fried plantain or steamed rice.',
     fullDescription:
@@ -187,7 +247,10 @@ export const MENU_ITEMS: MenuItem[] = [
     category: 'Bakery & Snacks',
     pricePhp: null,
     optionLabel: 'Sugar Option',
-    options: ['With Sugar', 'Without Sugar'],
+    options: [
+      { name: 'With Sugar', pricePhp: null },
+      { name: 'Without Sugar', pricePhp: null },
+    ],
     shortDescription:
       'Freshly fried homemade donuts, available with sugar or without sugar.',
     fullDescription:

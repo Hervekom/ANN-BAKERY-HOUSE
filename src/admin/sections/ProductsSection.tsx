@@ -37,9 +37,14 @@ import {
 } from '../ui';
 import ImageField from '../ImageField';
 
+interface VariantOptionForm {
+  name: string;
+  price: string;
+}
+
 interface VariantGroupForm {
   label: string;
-  names: string;
+  options: VariantOptionForm[];
 }
 
 interface ProductFormState {
@@ -57,10 +62,13 @@ interface ProductFormState {
 }
 
 function toFormState(product: ProductWithRelations): ProductFormState {
-  const byGroup = new Map<string, string[]>();
+  const byGroup = new Map<string, VariantOptionForm[]>();
   for (const option of [...product.product_options].sort((a, b) => a.display_order - b.display_order)) {
     const list = byGroup.get(option.group_label) ?? [];
-    list.push(option.name);
+    list.push({
+      name: option.name,
+      price: option.price_php === null ? '' : String(option.price_php),
+    });
     byGroup.set(option.group_label, list);
   }
   return {
@@ -74,7 +82,7 @@ function toFormState(product: ProductWithRelations): ProductFormState {
     price: product.price_php === null ? '' : String(product.price_php),
     is_available: product.is_available,
     slugTouched: true,
-    groups: [...byGroup.entries()].map(([label, names]) => ({ label, names: names.join('\n') })),
+    groups: [...byGroup.entries()].map(([label, options]) => ({ label, options })),
   };
 }
 
@@ -144,9 +152,25 @@ export default function ProductsSection({ session }: { session: AdminSessionInfo
     }
     const priceTrim = form.price.trim();
     const price = priceTrim === '' ? null : Number(priceTrim);
-    if (price !== null && Number.isNaN(price)) {
-      setError('The price must be a number, or left empty for "Price to be confirmed".');
+    if (price !== null && (!Number.isFinite(price) || price < 0)) {
+      setError('The price must be a valid number that is zero or greater, or left empty for “Price not available”.');
       return;
+    }
+
+    // Variant prices are optional, but when provided they must be valid
+    // non-negative numbers — never invent or auto-assign a price.
+    for (const group of form.groups) {
+      for (const opt of group.options) {
+        const pTrim = opt.price.trim();
+        if (pTrim === '') continue;
+        const p = Number(pTrim);
+        if (!Number.isFinite(p) || p < 0) {
+          setError(
+            `The variant price for “${opt.name.trim() || 'option'}” must be a valid number that is zero or greater, or left empty.`,
+          );
+          return;
+        }
+      }
     }
 
     const input: ProductInput = {
@@ -166,12 +190,18 @@ export default function ProductsSection({ session }: { session: AdminSessionInfo
     const groups: OptionGroupInput[] = form.groups
       .map((group) => ({
         group_label: group.label.trim(),
-        names: group.names
-          .split(/[\n,]/)
-          .map((name) => name.trim())
-          .filter(Boolean),
+        options: group.options
+          .map((opt) => {
+            const pTrim = opt.price.trim();
+            const p = pTrim === '' ? null : Number(pTrim);
+            return {
+              name: opt.name.trim(),
+              price_php: p,
+            };
+          })
+          .filter((opt) => opt.name),
       }))
-      .filter((group) => group.group_label && group.names.length > 0);
+      .filter((group) => group.group_label && group.options.length > 0);
 
     setSaving(true);
     setError(null);
@@ -239,7 +269,7 @@ export default function ProductsSection({ session }: { session: AdminSessionInfo
     <div>
       <SectionTitle
         title="Products"
-        description="Create, edit and order menu items. Prices are set in PHP (₱). Leave a price empty to show “Price to be confirmed”."
+        description="Create, edit and order menu items. Prices are set in PHP (₱). Leave a price empty to show “Price not available”."
         actions={
           <Button onClick={openCreate} disabled={missing}>
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -431,7 +461,7 @@ export default function ProductsSection({ session }: { session: AdminSessionInfo
               <Field
                 label="Price in PHP (₱)"
                 htmlFor="prod-price"
-                hint="Leave empty to display “Price to be confirmed”."
+                hint="Leave empty to display “Price not available”."
               >
                 <TextInput
                   id="prod-price"
@@ -440,7 +470,7 @@ export default function ProductsSection({ session }: { session: AdminSessionInfo
                   step="0.01"
                   value={form.price}
                   onChange={(e) => setForm((prev) => (prev ? { ...prev, price: e.target.value } : prev))}
-                  placeholder="Price to be confirmed"
+                  placeholder="Price not available"
                 />
               </Field>
 
@@ -469,7 +499,12 @@ export default function ProductsSection({ session }: { session: AdminSessionInfo
                   className="min-h-[34px] px-2.5 text-xs"
                   onClick={() =>
                     setForm((prev) =>
-                      prev ? { ...prev, groups: [...prev.groups, { label: '', names: '' }] } : prev,
+                      prev
+                        ? {
+                            ...prev,
+                            groups: [...prev.groups, { label: '', options: [{ name: '', price: '' }] }],
+                          }
+                        : prev,
                     )
                   }
                 >
@@ -511,21 +546,82 @@ export default function ProductsSection({ session }: { session: AdminSessionInfo
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </button>
                       </div>
-                      <TextArea
-                        rows={2}
-                        className="mt-2"
-                        value={group.names}
-                        placeholder={'Rice\nFried Plantain'}
-                        aria-label={`Variant group ${index + 1} options`}
-                        onChange={(e) =>
-                          setForm((prev) => {
-                            if (!prev) return prev;
-                            const groups = [...prev.groups];
-                            groups[index] = { ...groups[index], names: e.target.value };
-                            return { ...prev, groups };
-                          })
-                        }
-                      />
+                      <div className="space-y-3">
+                        {group.options.map((opt, optIndex) => (
+                          <div key={optIndex} className="flex items-center gap-2">
+                            <TextInput
+                              className="flex-1"
+                              value={opt.name}
+                              placeholder="Option name (e.g. Small)"
+                              onChange={(e) =>
+                                setForm((prev) => {
+                                  if (!prev) return prev;
+                                  const groups = [...prev.groups];
+                                  const options = [...groups[index].options];
+                                  options[optIndex] = { ...options[optIndex], name: e.target.value };
+                                  groups[index] = { ...groups[index], options };
+                                  return { ...prev, groups };
+                                })
+                              }
+                            />
+                            <TextInput
+                              className="w-32"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={opt.price}
+                              placeholder="Price (opt)"
+                              onChange={(e) =>
+                                setForm((prev) => {
+                                  if (!prev) return prev;
+                                  const groups = [...prev.groups];
+                                  const options = [...groups[index].options];
+                                  options[optIndex] = { ...options[optIndex], price: e.target.value };
+                                  groups[index] = { ...groups[index], options };
+                                  return { ...prev, groups };
+                                })
+                              }
+                            />
+                            <button
+                              type="button"
+                              aria-label="Remove option"
+                              onClick={() =>
+                                setForm((prev) => {
+                                  if (!prev) return prev;
+                                  const groups = [...prev.groups];
+                                  const options = groups[index].options.filter((_, i) => i !== optIndex);
+                                  if (options.length === 0) {
+                                    return { ...prev, groups: prev.groups.filter((_, i) => i !== index) };
+                                  }
+                                  groups[index] = { ...groups[index], options };
+                                  return { ...prev, groups };
+                                })
+                              }
+                              className="rounded-lg p-2 text-[#5C5952] hover:bg-[#AF140B]/10 hover:text-[#AF140B]"
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          </div>
+                        ))}
+                        <Button
+                          variant="secondary"
+                          className="min-h-[34px] w-full border-dashed px-2.5 text-xs"
+                          onClick={() =>
+                            setForm((prev) => {
+                              if (!prev) return prev;
+                              const groups = [...prev.groups];
+                              groups[index] = {
+                                ...groups[index],
+                                options: [...groups[index].options, { name: '', price: '' }],
+                              };
+                              return { ...prev, groups };
+                            })
+                          }
+                        >
+                          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                          Add option
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

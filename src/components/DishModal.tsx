@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MessageCircle, Minus, Plus, UtensilsCrossed, X } from 'lucide-react';
-import { BUSINESS_INFO, MenuItem, buildWhatsAppUrl } from '../data/menu';
+import { BUSINESS_INFO, MenuItem, buildWhatsAppUrl, getUnitPrice } from '../data/menu';
 import PriceLabel from './PriceLabel';
 
 interface DishModalProps {
@@ -30,7 +30,7 @@ export default function DishModal({
     setImgError(false);
     setQty(1);
     if (item?.options && item.options.length > 0) {
-      setChosenOption(initialOption || item.options[0]);
+      setChosenOption(initialOption || item.options[0].name);
     } else {
       setChosenOption(undefined);
     }
@@ -113,7 +113,14 @@ export default function DishModal({
           </h2>
 
           <p className="mt-1.5 mb-3 text-base font-bold text-[#111111]">
-            <PriceLabel pricePhp={item.pricePhp} />
+            <PriceLabel
+              pricePhp={
+                chosenOption
+                  ? item.options?.find((o) => o.name === chosenOption)?.pricePhp ??
+                    item.pricePhp
+                  : item.pricePhp
+              }
+            />
           </p>
 
           <p className="mb-5 text-sm leading-relaxed text-[#5C5952]">
@@ -127,14 +134,14 @@ export default function DishModal({
               </span>
               <div className="flex flex-wrap gap-2">
                 {item.options.map((option) => {
-                  const isSelected = chosenOption === option;
+                  const isSelected = chosenOption === option.name;
                   return (
                     <button
-                      key={option}
+                      key={option.name}
                       type="button"
                       onClick={() => {
-                        setChosenOption(option);
-                        onSelectOption?.(item.id, option);
+                        setChosenOption(option.name);
+                        onSelectOption?.(item.id, option.name);
                       }}
                       className={`min-h-[42px] whitespace-nowrap rounded-lg border px-4 py-1.5 text-xs font-semibold transition-colors ${
                         isSelected
@@ -142,7 +149,7 @@ export default function DishModal({
                           : 'border-[#DDD4BE] bg-[#FFFDF9] text-[#111111] hover:border-[#FD8F00]'
                       }`}
                     >
-                      {option}
+                      {option.name}
                     </button>
                   );
                 })}

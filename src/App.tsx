@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MotionConfig } from 'motion/react';
 import { CheckCircle2, MessageCircle, Search, Share2, ShoppingBag, X } from 'lucide-react';
 import Navbar from './components/Navbar';
@@ -24,6 +24,7 @@ import {
   MenuItem,
   buildWhatsAppUrl,
   getCartKey,
+  getUnitPrice,
 } from './data/menu';
 import { usePublicContent } from './hooks/usePublicContent';
 import {
@@ -50,13 +51,15 @@ import {
 type CategoryFilter = 'All' | MenuCategory;
 
 export default function App() {
+  const { settings, items, categories } = usePublicContent();
+
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => {
     const defaults: Record<string, string> = {};
     for (const item of MENU_ITEMS) {
       if (item.options && item.options.length > 0) {
-        defaults[item.id] = item.options[0];
+        defaults[item.id] = item.options[0].name;
       }
     }
     return defaults;
@@ -80,6 +83,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<CustomerUser | null>(null);
   const [authModalMode, setAuthModalMode] = useState<AuthModalMode | null>(null);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [sharingItem, setSharingItem] = useState<MenuItem | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [approvedReviews, setApprovedReviews] = useState<CustomerReview[]>([]);
   const [approvedCount, setApprovedCount] = useState(0);
@@ -160,6 +164,26 @@ export default function App() {
     void refreshReviews(null);
   }, [refreshReviews]);
 
+  // Handle product-specific sharing URLs. Guarded so a background content
+  // revalidation (focus / visibility / bfcache) does not re-open a product the
+  // visitor already closed.
+  const sharedProductHandled = useRef(false);
+
+  useEffect(() => {
+    if (sharedProductHandled.current || items.length === 0) return;
+
+    const productId = new URLSearchParams(window.location.search).get('product');
+    if (!productId) return;
+
+    const foundItem = items.find((i) => i.id === productId);
+    if (!foundItem) return;
+
+    sharedProductHandled.current = true;
+    setInspectedItem(foundItem);
+    // Scroll to menu section to ensure visibility
+    document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
+  }, [items]);
+
   const handleAuthenticated = async (user: CustomerUser) => {
     setCurrentUser(user);
     await refreshReviews(user);
@@ -176,7 +200,15 @@ export default function App() {
     setMyReviews([]);
   };
 
-  const { settings, items, categories } = usePublicContent();
+  const handleShareMenu = () => {
+    setSharingItem(null);
+    setShareMenuOpen(true);
+  };
+
+  const handleShareItem = (item: MenuItem) => {
+    setSharingItem(item);
+    setShareMenuOpen(true);
+  };
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -213,14 +245,18 @@ export default function App() {
   );
 
   const hasPendingPricing = useMemo(
-    () => bagEntries.some((entry) => entry.item.pricePhp === null),
+    () =>
+      bagEntries.some(
+        (entry) => getUnitPrice(entry.item, entry.selectedOption) === null,
+      ),
     [bagEntries],
   );
 
   const bagSubtotal = useMemo(
     () =>
       bagEntries.reduce(
-        (sum, entry) => sum + (entry.item.pricePhp ?? 0) * entry.quantity,
+        (sum, entry) =>
+          sum + (getUnitPrice(entry.item, entry.selectedOption) ?? 0) * entry.quantity,
         0,
       ),
     [bagEntries],
@@ -237,7 +273,7 @@ export default function App() {
     const effectiveOption =
       chosenOption ??
       (item.options && item.options.length > 0
-        ? selectedOptions[item.id] ?? item.options[0]
+        ? selectedOptions[item.id] ?? item.options[0].name
         : undefined);
     const key = getCartKey(item.id, effectiveOption);
 
@@ -399,7 +435,7 @@ export default function App() {
                       Official Menu
                     </p>
                     <button
-                      onClick={() => setShareMenuOpen(true)}
+                      onClick={handleShareMenu}
                       className="inline-flex items-center gap-1.5 rounded-full border border-[#E8DFC8] bg-[#FFFDF9] px-2.5 py-1 text-[10px] font-bold text-[#3C5826] uppercase transition-colors hover:border-[#FD8F00] hover:bg-[#FAF6EE]"
                     >
                       <Share2 className="h-3 w-3" />
@@ -524,7 +560,7 @@ export default function App() {
                         {itemsInCategory.map((item) => {
                           const activeOpt =
                             item.options && item.options.length > 0
-                              ? selectedOptions[item.id] ?? item.options[0]
+                              ? selectedOptions[item.id] ?? item.options[0].name
                               : undefined;
                           const key = getCartKey(item.id, activeOpt);
                           const quantity = bag[key]?.quantity ?? 0;
@@ -539,6 +575,7 @@ export default function App() {
                               onAdd={handleAddItem}
                               onDecrement={handleDecrementItem}
                               onInspect={setInspectedItem}
+                              onShare={handleShareItem}
                             />
                           );
                         })}
@@ -882,6 +919,7 @@ export default function App() {
         <ShareMenu
           open={shareMenuOpen}
           onClose={() => setShareMenuOpen(false)}
+          item={sharingItem}
         />
 
         <CustomerProfileModal

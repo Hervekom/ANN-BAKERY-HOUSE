@@ -16,7 +16,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { BUSINESS_INFO, MenuItem, buildWhatsAppUrl } from '../data/menu';
+import { BUSINESS_INFO, MenuItem, buildWhatsAppUrl, getUnitPrice } from '../data/menu';
 import { PlacedOrder, PlaceOrderInput, SubmitOrderResult } from '../lib/orders';
 import { SavedWhatsAppOrder } from '../utils/lastOrderStorage';
 import { cartSignature, getCheckoutKey } from '../utils/checkoutSession';
@@ -127,12 +127,20 @@ export default function OrderDrawer({
   const totalCount = entries.reduce((sum, entry) => sum + entry.quantity, 0);
 
   const hasPendingPricing = useMemo(
-    () => entries.some((entry) => entry.item.pricePhp === null),
+    () =>
+      entries.some(
+        (entry) => getUnitPrice(entry.item, entry.selectedOption) === null,
+      ),
     [entries],
   );
 
   const bagSubtotal = useMemo(
-    () => entries.reduce((sum, entry) => sum + (entry.item.pricePhp ?? 0) * entry.quantity, 0),
+    () =>
+      entries.reduce(
+        (sum, entry) =>
+          sum + (getUnitPrice(entry.item, entry.selectedOption) ?? 0) * entry.quantity,
+        0,
+      ),
     [entries],
   );
 

@@ -208,8 +208,12 @@ function toMenuItem(
     (a, b) => a.display_order - b.display_order,
   );
   const groupLabel = options[0]?.group_label;
-  const optionNames = groupLabel
-    ? options.filter((o) => o.group_label === groupLabel).map((o) => o.name)
+  // Variant prices are carried through so the public site can show the exact
+  // price of the selected option (NULL = no price set for that variant yet).
+  const groupOptions = groupLabel
+    ? options
+        .filter((o) => o.group_label === groupLabel)
+        .map((o) => ({ name: o.name, pricePhp: o.price_php }))
     : [];
 
   return {
@@ -218,7 +222,7 @@ function toMenuItem(
     category: categoryName,
     pricePhp: product.price_php,
     optionLabel: groupLabel,
-    options: optionNames.length > 0 ? optionNames : undefined,
+    options: groupOptions.length > 0 ? groupOptions : undefined,
     shortDescription: product.short_description ?? '',
     fullDescription: product.full_description ?? product.short_description ?? '',
     image: product.image_path ?? '',

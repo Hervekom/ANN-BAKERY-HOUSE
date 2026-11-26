@@ -4,6 +4,8 @@ import { BUSINESS_INFO, formatPhp } from '../data/menu';
 
 interface PriceLabelProps {
   pricePhp: number | null;
+  minPrice?: number | null;
+  maxPrice?: number | null;
   pendingLabel?: string;
   align?: 'left' | 'right';
   className?: string;
@@ -15,6 +17,8 @@ const TOOLTIP_TEXT =
 
 export default function PriceLabel({
   pricePhp,
+  minPrice,
+  maxPrice,
   pendingLabel = BUSINESS_INFO.pricePendingText,
   align = 'left',
   className = '',
@@ -49,6 +53,18 @@ export default function PriceLabel({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [pinnedOpen]);
+
+  // Handle price range display
+  if (minPrice !== undefined && maxPrice !== undefined && minPrice !== null && maxPrice !== null) {
+    if (minPrice === maxPrice) {
+      return <span className={`tabular-nums ${className}`}>{formatPhp(minPrice)}</span>;
+    }
+    return (
+      <span className={`tabular-nums ${className}`}>
+        {formatPhp(minPrice)} - {formatPhp(maxPrice)}
+      </span>
+    );
+  }
 
   if (pricePhp !== null) {
     return <span className={`tabular-nums ${className}`}>{formatPhp(pricePhp)}</span>;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Minus, Plus, UtensilsCrossed } from 'lucide-react';
-import { MenuItem } from '../data/menu';
+import { Minus, Plus, Share2, UtensilsCrossed } from 'lucide-react';
+import { MenuItem, getPriceRange, getUnitPrice } from '../data/menu';
 import PriceLabel from './PriceLabel';
 
 interface MenuCardProps {
@@ -11,6 +11,7 @@ interface MenuCardProps {
   onAdd: (item: MenuItem, option?: string) => void;
   onDecrement: (itemId: string, option?: string) => void;
   onInspect: (item: MenuItem) => void;
+  onShare: (item: MenuItem) => void;
 }
 
 export default function MenuCard({
@@ -21,6 +22,7 @@ export default function MenuCard({
   onAdd,
   onDecrement,
   onInspect,
+  onShare,
 }: MenuCardProps) {
   const [imgError, setImgError] = useState(false);
 
@@ -79,7 +81,14 @@ export default function MenuCard({
 
         {/* PHP Price / Price to be confirmed */}
         <p className="mt-1 mb-2 text-sm font-semibold text-[#111111]">
-          <PriceLabel pricePhp={item.pricePhp} />
+          {selectedOption ? (
+            <PriceLabel pricePhp={getUnitPrice(item, selectedOption)} />
+          ) : (
+            <PriceLabel
+              pricePhp={item.pricePhp}
+              {...getPriceRange(item)}
+            />
+          )}
         </p>
 
         <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-[#5C5952]">
@@ -94,19 +103,19 @@ export default function MenuCard({
             </span>
             <div className="flex flex-wrap gap-2">
               {item.options.map((option) => {
-                const isSelected = selectedOption === option;
+                const isSelected = selectedOption === option.name;
                 return (
                   <button
-                    key={option}
+                    key={option.name}
                     type="button"
-                    onClick={() => onSelectOption(option)}
+                    onClick={() => onSelectOption(option.name)}
                     className={`min-h-[40px] whitespace-nowrap rounded-md border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                       isSelected
                         ? 'border-[#111111] bg-[#111111] text-[#FFFDF9]'
                         : 'border-[#DDD4BE] bg-[#FAF6EE] text-[#111111] hover:border-[#FD8F00]'
                     }`}
                   >
-                    {option}
+                    {option.name}
                   </button>
                 );
               })}
@@ -116,13 +125,23 @@ export default function MenuCard({
 
         {/* Actions */}
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2.5 border-t border-[#EFE7D4] pt-3.5 sm:pt-4">
-          <button
-            type="button"
-            onClick={() => onInspect(item)}
-            className="min-h-[44px] whitespace-nowrap text-sm font-semibold text-[#111111] underline-offset-4 transition-colors hover:text-[#AF140B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
-          >
-            View Details
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => onInspect(item)}
+              className="min-h-[44px] whitespace-nowrap text-sm font-semibold text-[#111111] underline-offset-4 transition-colors hover:text-[#AF140B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
+            >
+              View Details
+            </button>
+            <button
+              type="button"
+              onClick={() => onShare(item)}
+              aria-label={`Share ${item.name}`}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E8DFC8] bg-[#FAF6EE] text-[#3C5826] transition-colors hover:border-[#FD8F00] hover:bg-[#FDD364]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+          </div>
 
           {quantity === 0 ? (
             <button

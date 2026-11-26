@@ -7,19 +7,31 @@ import {
   Check,
   X,
   MessageSquare,
+  Utensils,
 } from 'lucide-react';
-import { BUSINESS_INFO } from '../data/menu';
+import { BUSINESS_INFO, MenuItem, formatPhp } from '../data/menu';
 
 interface ShareMenuProps {
   open: boolean;
   onClose: () => void;
+  item?: MenuItem | null;
 }
 
-export default function ShareMenu({ open, onClose }: ShareMenuProps) {
+export default function ShareMenu({ open, onClose, item }: ShareMenuProps) {
   const [copied, setCopied] = useState(false);
-  const shareUrl = 'https://annbakeryhouse.vercel.app/#menu';
-  const shareTitle = BUSINESS_INFO.name;
-  const shareText = `Discover ${BUSINESS_INFO.name} — Authentic Flavors. Homemade with Love.`;
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://annbakeryhouse.vercel.app';
+  const shareUrl = item
+    ? `${baseUrl}?product=${encodeURIComponent(item.id)}#menu`
+    : `${baseUrl}#menu`;
+
+  const shareTitle = item ? item.name : BUSINESS_INFO.name;
+
+  const shareText = item
+    ? `Check out this delicious ${item.name}${
+        item.pricePhp ? ` (${formatPhp(item.pricePhp)})` : ''
+      } from ${BUSINESS_INFO.name}!`
+    : `Discover ${BUSINESS_INFO.name} — Authentic Flavors. Homemade with Love.`;
 
   useEffect(() => {
     if (!open) return;
@@ -87,19 +99,17 @@ export default function ShareMenu({ open, onClose }: ShareMenuProps) {
       icon: <MessageSquare className="h-5 w-5" />,
       color: 'bg-[#00B2FF]',
       onClick: () => {
-        const url = `fb-messenger://share/?link=${encodeURIComponent(
-          shareUrl
-        )}&app_id=`;
-        window.open(url, '_blank');
-        // Fallback for desktop/non-app
-        setTimeout(() => {
-          window.open(
-            `https://www.facebook.com/dialog/send?link=${encodeURIComponent(
-              shareUrl
-            )}&app_id=123456789&redirect_uri=${encodeURIComponent(shareUrl)}`,
-            '_blank'
-          );
-        }, 500);
+        // Messenger has no reliable web share endpoint without a registered
+        // app_id. Try the native app scheme without unloading this page; if the
+        // app is not installed the browser ignores the custom scheme, so the
+        // link is copied as a dependable cross-platform fallback.
+        const messengerUrl = `fb-messenger://share/?link=${encodeURIComponent(shareUrl)}`;
+
+        window.open(messengerUrl, '_blank');
+
+        window.setTimeout(() => {
+          void handleCopyLink();
+        }, 1000);
       },
     },
   ];
@@ -109,7 +119,7 @@ export default function ShareMenu({ open, onClose }: ShareMenuProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="share-menu-title"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-[#111111]/70 p-0 backdrop-blur-xs sm:items-center sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-[#111111]/80 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
@@ -127,16 +137,18 @@ export default function ShareMenu({ open, onClose }: ShareMenuProps) {
 
         <div className="text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#3C5826]/10 text-[#3C5826]">
-            <Share2 className="h-6 w-6" />
+            {item ? <Utensils className="h-6 w-6" /> : <Share2 className="h-6 w-6" />}
           </div>
           <h2
             id="share-menu-title"
             className="font-display mt-3 text-xl font-bold text-[#111111]"
           >
-            Share Our Menu
+            {item ? `Share ${item.name}` : 'Share Our Menu'}
           </h2>
           <p className="mt-1 text-sm text-[#5C5952]">
-            Help others discover authentic homemade flavors.
+            {item
+              ? `Let others know about this delicious ${item.category.toLowerCase()}.`
+              : 'Help others discover authentic homemade flavors.'}
           </p>
         </div>
 

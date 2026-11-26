@@ -39,6 +39,7 @@ export interface ProductOptionRow {
   product_id: string;
   group_label: string;
   name: string;
+  price_php: number | null;
   display_order: number;
   is_available: boolean;
   created_at: string;
