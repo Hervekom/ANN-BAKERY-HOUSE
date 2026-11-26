@@ -113,14 +113,7 @@ export default function DishModal({
           </h2>
 
           <p className="mt-1.5 mb-3 text-base font-bold text-[#111111]">
-            <PriceLabel
-              pricePhp={
-                chosenOption
-                  ? item.options?.find((o) => o.name === chosenOption)?.pricePhp ??
-                    item.pricePhp
-                  : item.pricePhp
-              }
-            />
+            <PriceLabel pricePhp={getUnitPrice(item, chosenOption)} />
           </p>
 
           <p className="mb-5 text-sm leading-relaxed text-[#5C5952]">
