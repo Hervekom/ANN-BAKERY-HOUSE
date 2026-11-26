@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MotionConfig } from 'motion/react';
-import { CheckCircle2, MessageCircle, Search, ShoppingBag, X } from 'lucide-react';
+import { CheckCircle2, MessageCircle, Search, Share2, ShoppingBag, X } from 'lucide-react';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import MenuCard from './components/MenuCard';
@@ -17,6 +17,7 @@ import ReviewsSection from './components/ReviewsSection';
 import AuthModal, { AuthModalMode } from './components/AuthModal';
 import CustomerProfileModal from './components/CustomerProfileModal';
 import ContactSection from './components/ContactSection';
+import ShareMenu from './components/ShareMenu';
 import {
   MENU_ITEMS,
   MenuCategory,
@@ -78,6 +79,7 @@ export default function App() {
   // Customer Accounts & Reviews state
   const [currentUser, setCurrentUser] = useState<CustomerUser | null>(null);
   const [authModalMode, setAuthModalMode] = useState<AuthModalMode | null>(null);
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [approvedReviews, setApprovedReviews] = useState<CustomerReview[]>([]);
   const [approvedCount, setApprovedCount] = useState(0);
@@ -392,9 +394,18 @@ export default function App() {
             <div className="border-b border-[#E8DFC8] pb-6 sm:pb-8">
               <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
-                  <p className="text-xs font-semibold tracking-[0.16em] text-[#AF140B] uppercase">
-                    Official Menu
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs font-semibold tracking-[0.16em] text-[#AF140B] uppercase">
+                      Official Menu
+                    </p>
+                    <button
+                      onClick={() => setShareMenuOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#E8DFC8] bg-[#FFFDF9] px-2.5 py-1 text-[10px] font-bold text-[#3C5826] uppercase transition-colors hover:border-[#FD8F00] hover:bg-[#FAF6EE]"
+                    >
+                      <Share2 className="h-3 w-3" />
+                      <span>Share Menu</span>
+                    </button>
+                  </div>
                   <h2 className="font-display text-balance mt-1.5 text-3xl font-bold text-[#111111] sm:text-4xl md:text-5xl">
                     Homemade Dishes, Grilled Specialties & Fresh Bakery
                   </h2>
@@ -866,6 +877,11 @@ export default function App() {
           onClose={() => setAuthModalMode(null)}
           onAuthenticated={(user) => void handleAuthenticated(user)}
           whatsappDigits={settings.whatsapp_digits}
+        />
+
+        <ShareMenu
+          open={shareMenuOpen}
+          onClose={() => setShareMenuOpen(false)}
         />
 
         <CustomerProfileModal
