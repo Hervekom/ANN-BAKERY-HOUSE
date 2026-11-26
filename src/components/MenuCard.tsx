@@ -25,6 +25,7 @@ export default function MenuCard({
   onShare,
 }: MenuCardProps) {
   const [imgError, setImgError] = useState(false);
+  const range = getPriceRange(item);
 
   return (
     <article className="group flex flex-col rounded-xl border border-[#E8DFC8] bg-[#FFFDF9] shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-[#FD8F00] hover:shadow-md">
@@ -84,10 +85,7 @@ export default function MenuCard({
           {selectedOption ? (
             <PriceLabel pricePhp={getUnitPrice(item, selectedOption)} />
           ) : (
-            <PriceLabel
-              pricePhp={item.pricePhp}
-              {...getPriceRange(item)}
-            />
+            <PriceLabel pricePhp={item.pricePhp} minPrice={range.min} maxPrice={range.max} />
           )}
         </p>
 

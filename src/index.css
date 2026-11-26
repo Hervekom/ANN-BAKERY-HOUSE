@@ -78,3 +78,14 @@
     font-size: 16px !important;
   }
 }
+
+/*
+ * Keep the focused control clear of the on-screen keyboard. The global focusin
+ * handler in main.tsx centers the field; this margin ensures it never lands
+ * flush against the top or bottom edge of the viewport.
+ */
+input,
+textarea,
+select {
+  scroll-margin-block: 5rem;
+}

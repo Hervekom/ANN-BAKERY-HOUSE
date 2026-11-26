@@ -66,7 +66,7 @@ export default function App() {
   });
   const [bag, setBag] = useState<Record<string, BagEntry>>({});
   const [bagOpen, setBagOpen] = useState(false);
-  const [inspectedItem, setInspectedItem] = useState<MenuItem | null>(null);
+  const [inspectedId, setInspectedId] = useState<string | null>(null);
   const [lastSavedOrder, setLastSavedOrder] = useState<SavedWhatsAppOrder | null>(
     () => loadLastWhatsAppOrder(),
   );
@@ -174,15 +174,20 @@ export default function App() {
 
     const productId = new URLSearchParams(window.location.search).get('product');
     if (!productId) return;
-
-    const foundItem = items.find((i) => i.id === productId);
-    if (!foundItem) return;
+    if (!items.some((i) => i.id === productId)) return;
 
     sharedProductHandled.current = true;
-    setInspectedItem(foundItem);
+    setInspectedId(productId);
     // Scroll to menu section to ensure visibility
     document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
   }, [items]);
+
+  // Resolve the inspected item against the *live* content so a shared link
+  // always shows the current image and price (not a stale snapshot).
+  const inspectedItem = useMemo(
+    () => (inspectedId ? items.find((i) => i.id === inspectedId) ?? null : null),
+    [items, inspectedId],
+  );
 
   const handleAuthenticated = async (user: CustomerUser) => {
     setCurrentUser(user);
@@ -574,7 +579,7 @@ export default function App() {
                               quantity={quantity}
                               onAdd={handleAddItem}
                               onDecrement={handleDecrementItem}
-                              onInspect={setInspectedItem}
+                              onInspect={(item) => setInspectedId(item.id)}
                               onShare={handleShareItem}
                             />
                           );
@@ -887,7 +892,7 @@ export default function App() {
           item={inspectedItem}
           initialOption={inspectedItem ? selectedOptions[inspectedItem.id] : undefined}
           onSelectOption={handleSelectOption}
-          onClose={() => setInspectedItem(null)}
+          onClose={() => setInspectedId(null)}
           onAdd={handleAddItem}
           onRecordOrder={handleRecordOrder}
         />
