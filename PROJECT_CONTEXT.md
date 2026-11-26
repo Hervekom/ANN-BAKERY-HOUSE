@@ -131,6 +131,11 @@ public website.
 - **Menu sharing** (whole menu) and **individual product sharing**: WhatsApp,
   Facebook, Messenger (with copy-link fallback), native `navigator.share`, and copy
   link. Product links use `?product=<id>#menu`.
+- **Persistent cart**: the shopping bag is stored in the visitor's browser
+  (`localStorage`, key `ann_bakery_cart_v1`) via `src/utils/cartStorage.ts`, so a
+  page refresh or a returning visitor keeps the selected dishes — no account
+  required. Cart lines are re-resolved against the live menu so restored items
+  show the current name/image/price.
 
 ---
 
@@ -207,6 +212,39 @@ all behave correctly. Because prices are still `NULL` in the database,
 footer shows the "Price to be confirmed by ANN BAKERY HOUSE" label instead of a
 numeric subtotal — missing prices no longer crash the cart. Existing pricing
 (`getUnitPrice`) and sharing logic were left untouched.
+
+---
+
+## 6.1 FIXED — Cart lost on page refresh (2026-11-26)
+
+**Symptom:** items added to the shopping bag disappeared on page refresh. Guests
+(no account) could never get their selection back.
+
+**Root cause:** the bag lived only in React state
+(`useState<Record<string, BagEntry>>({})` in `src/App.tsx`) and was never
+persisted, so any reload reset it to empty.
+
+**Fix:**
+- Added `src/utils/cartStorage.ts` (same pattern as `lastOrderStorage.ts`):
+  `loadSavedCart()` / `saveCart()` read and write a sanitized cart to
+  `localStorage` under `ann_bakery_cart_v1`. Each line stores an item snapshot
+  (`{ item, selectedOption, quantity }`), validated on read so corrupt/partial
+  data can never crash the app.
+- `src/App.tsx`:
+  - `bag` is now lazily initialised from `loadSavedCart()`.
+  - a `useEffect([bag])` saves the cart after every change;
+  - a `useEffect([items])` re-resolves each line against the live menu (replacing
+    the stored snapshot when the product still exists), so a restored cart shows
+    the current name/image/price and never regresses to stale data. It returns the
+    previous state when nothing changed, so there is no render loop.
+
+**Why a snapshot:** restoring by id against the bundled static menu only would
+drop products that exist solely in the dashboard. The snapshot guarantees the
+selection survives the refresh; the live re-resolution keeps it current.
+
+**Verification:** `npm run lint` → 0 errors; `npm run build` → success. Manual:
+add items → refresh → bag and quantities remain; change quantity / remove / clear
+→ refresh → state matches; opening the cart still works (no hooks regression).
 
 ---
 

@@ -47,6 +47,7 @@ import {
   loadLastWhatsAppOrder,
   saveLastWhatsAppOrder,
 } from './utils/lastOrderStorage';
+import { loadSavedCart, saveCart } from './utils/cartStorage';
 
 type CategoryFilter = 'All' | MenuCategory;
 
@@ -64,7 +65,21 @@ export default function App() {
     }
     return defaults;
   });
-  const [bag, setBag] = useState<Record<string, BagEntry>>({});
+  const [bag, setBag] = useState<Record<string, BagEntry>>(() => {
+    // Restore the visitor's cart from this browser (works without an account).
+    // A later effect re-resolves these lines against the live menu.
+    const restored: Record<string, BagEntry> = {};
+    for (const saved of loadSavedCart()) {
+      const key = getCartKey(saved.item.id, saved.selectedOption);
+      restored[key] = {
+        key,
+        item: saved.item,
+        selectedOption: saved.selectedOption,
+        quantity: saved.quantity,
+      };
+    }
+    return restored;
+  });
   const [bagOpen, setBagOpen] = useState(false);
   const [inspectedId, setInspectedId] = useState<string | null>(null);
   const [lastSavedOrder, setLastSavedOrder] = useState<SavedWhatsAppOrder | null>(
@@ -241,6 +256,38 @@ export default function App() {
       ),
     );
   }, [activeCategory, normalizedQuery, items, categories]);
+
+  // Persist the cart in this browser so a page refresh (or a returning visitor)
+  // never loses the selected dishes, with or without a customer account.
+  useEffect(() => {
+    saveCart(
+      Object.values(bag).map((entry) => ({
+        item: entry.item,
+        selectedOption: entry.selectedOption,
+        quantity: entry.quantity,
+      })),
+    );
+  }, [bag]);
+
+  // Re-resolve every cart line against the live menu so a restored (or kept-open)
+  // cart always shows the current name, image and price rather than a stale
+  // snapshot. Returns the previous state when nothing changed to avoid loops.
+  useEffect(() => {
+    setBag((prev) => {
+      let changed = false;
+      const next: Record<string, BagEntry> = {};
+      for (const [key, entry] of Object.entries(prev)) {
+        const live = items.find((candidate) => candidate.id === entry.item.id);
+        if (live && live !== entry.item) {
+          next[key] = { ...entry, item: live };
+          changed = true;
+        } else {
+          next[key] = entry;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [items]);
 
   const bagEntries: BagEntry[] = useMemo(() => Object.values(bag), [bag]);
 
