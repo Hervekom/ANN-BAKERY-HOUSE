@@ -26,10 +26,18 @@ import {
 } from './data/menu';
 import { usePublicContent } from './hooks/usePublicContent';
 import {
+  PlaceOrderInput,
+  PlacedOrder,
+  SubmitOrderResult,
+  placeOrder,
+} from './lib/orders';
+import {
   fetchApprovedReviews,
   fetchMyReviews,
   logoutCustomer,
 } from './services/api';
+import { supabase } from './lib/supabase';
+import { isAdminUser } from './lib/auth';
 import { CustomerReview, CustomerUser } from './types/account';
 import {
   SavedWhatsAppOrder,
@@ -97,6 +105,54 @@ export default function App() {
       setLoadingReviews(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    // Restore existing Supabase session on mount.
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user && !isAdminUser(session.user)) {
+        const customer = {
+          id: session.user.id,
+          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'Customer',
+          email: session.user.email || '',
+          role: 'customer' as const,
+          createdAt: session.user.created_at,
+        };
+        setCurrentUser(customer);
+        void refreshReviews(customer);
+      }
+    });
+
+    // Listen for auth changes (login, logout, token refresh).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user && !isAdminUser(session.user)) {
+        const customer = {
+          id: session.user.id,
+          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'Customer',
+          email: session.user.email || '',
+          role: 'customer' as const,
+          createdAt: session.user.created_at,
+        };
+        setCurrentUser(customer);
+        void refreshReviews(customer);
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        setMyReviews([]);
+      } else if (event === 'USER_UPDATED' && session?.user && !isAdminUser(session.user)) {
+        const customer = {
+          id: session.user.id,
+          name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'Customer',
+          email: session.user.email || '',
+          role: 'customer' as const,
+          createdAt: session.user.created_at,
+        };
+        setCurrentUser(customer);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [refreshReviews]);
 
   useEffect(() => {
     void refreshReviews(null);
@@ -228,14 +284,44 @@ export default function App() {
     setBag({});
   };
 
-  const handleRecordOrder = (message: string, url: string, itemCount: number) => {
-    const saved = saveLastWhatsAppOrder({ message, url, itemCount });
+  const handleRecordOrder = (
+    message: string,
+    url: string,
+    itemCount: number,
+    order?: PlacedOrder,
+  ) => {
+    const saved = saveLastWhatsAppOrder({
+      message,
+      url,
+      itemCount,
+      orderNumber: order?.orderNumber,
+      orderId: order?.id,
+      totalPhp: order?.totalPhp,
+    });
     setLastSavedOrder(saved);
   };
 
   const handleClearSavedOrder = () => {
     clearLastWhatsAppOrder();
     setLastSavedOrder(null);
+  };
+
+  /**
+   * Records the checkout in Supabase through the trusted `place_order` function,
+   * then reports the outcome. The WhatsApp message is only sent by the drawer
+   * AFTER this resolves successfully — a failed record is never shown as a
+   * placed order.
+   */
+  const handleSubmitOrder = async (input: PlaceOrderInput): Promise<SubmitOrderResult> => {
+    const result = await placeOrder(input);
+    if (result.data) {
+      return { ok: true, order: result.data };
+    }
+    return {
+      ok: false,
+      error: result.error ?? 'We could not record your order.',
+      notEnabled: result.missingRelation,
+    };
   };
 
   const quickWhatsAppUrl = `https://wa.me/${settings.whatsapp_digits}`;
@@ -762,13 +848,16 @@ export default function App() {
           open={bagOpen}
           entries={bagEntries}
           lastSavedOrder={lastSavedOrder}
+          defaultCustomerName={currentUser?.name}
           onClose={() => setBagOpen(false)}
           onIncrement={handleAddItem}
           onDecrement={handleDecrementItem}
           onRemove={handleRemoveItem}
           onClear={handleClearBag}
+          onSubmitOrder={handleSubmitOrder}
           onRecordOrder={handleRecordOrder}
           onClearSavedOrder={handleClearSavedOrder}
+          whatsappDigits={settings.whatsapp_digits}
         />
 
         <AuthModal

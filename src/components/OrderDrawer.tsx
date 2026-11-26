@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  AlertCircle,
+  BadgeCheck,
   Check,
   ChevronDown,
   ChevronUp,
   Copy,
   History,
   Info,
+  Loader2,
   MessageCircle,
   Minus,
   Plus,
@@ -14,7 +17,9 @@ import {
   X,
 } from 'lucide-react';
 import { BUSINESS_INFO, MenuItem, buildWhatsAppUrl } from '../data/menu';
+import { PlacedOrder, PlaceOrderInput, SubmitOrderResult } from '../lib/orders';
 import { SavedWhatsAppOrder } from '../utils/lastOrderStorage';
+import { cartSignature, getCheckoutKey } from '../utils/checkoutSession';
 import PriceLabel from './PriceLabel';
 
 export interface BagEntry {
@@ -30,12 +35,20 @@ interface OrderDrawerProps {
   open: boolean;
   entries: BagEntry[];
   lastSavedOrder: SavedWhatsAppOrder | null;
+  defaultCustomerName?: string;
   onClose: () => void;
   onIncrement: (item: MenuItem, selectedOption?: string) => void;
   onDecrement: (itemId: string, selectedOption?: string) => void;
   onRemove: (itemId: string, selectedOption?: string) => void;
   onClear: () => void;
-  onRecordOrder: (message: string, url: string, itemCount: number) => void;
+  /** Records the order in Supabase. Must NOT claim success unless the row exists. */
+  onSubmitOrder: (input: PlaceOrderInput) => Promise<SubmitOrderResult>;
+  onRecordOrder: (
+    message: string,
+    url: string,
+    itemCount: number,
+    order?: PlacedOrder,
+  ) => void;
   onClearSavedOrder: () => void;
   whatsappDigits?: string;
 }
@@ -57,23 +70,46 @@ export default function OrderDrawer({
   open,
   entries,
   lastSavedOrder,
+  defaultCustomerName,
   onClose,
   onIncrement,
   onDecrement,
   onRemove,
   onClear,
+  onSubmitOrder,
   onRecordOrder,
   onClearSavedOrder,
   whatsappDigits,
 }: OrderDrawerProps) {
-  const [customerName, setCustomerName] = useState('');
+  const [customerName, setCustomerName] = useState(defaultCustomerName ?? '');
   const [customerPhone, setCustomerPhone] = useState('');
   const [arrangement, setArrangement] = useState<ArrangementOption>('');
   const [instructions, setInstructions] = useState('');
-  const [whatsappAttempted, setWhatsappAttempted] = useState(false);
   const [savedExpanded, setSavedExpanded] = useState(false);
   const [copiedSaved, setCopiedSaved] = useState(false);
   const [copiedCurrent, setCopiedCurrent] = useState(false);
+
+  // Checkout state.
+  const [submitting, setSubmitting] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [recordingUnavailable, setRecordingUnavailable] = useState(false);
+
+  const signature = useMemo(
+    () => cartSignature(entries.map((entry) => ({ key: entry.key, quantity: entry.quantity }))),
+    [entries],
+  );
+
+  // Editing the cart starts a fresh checkout attempt (and a fresh idempotency key).
+  useEffect(() => {
+    setPlacedOrder(null);
+    setSubmitError(null);
+    setRecordingUnavailable(false);
+  }, [signature]);
+
+  useEffect(() => {
+    setCustomerName((prev) => (prev.trim() ? prev : defaultCustomerName ?? ''));
+  }, [defaultCustomerName]);
 
   useEffect(() => {
     if (!open) return;
@@ -90,44 +126,115 @@ export default function OrderDrawer({
 
   const totalCount = entries.reduce((sum, entry) => sum + entry.quantity, 0);
 
-  const messageLines: string[] = [
-    `Hello ${BUSINESS_INFO.name}!`,
-    '',
-    'I would like to place an order.',
-  ];
-
-  if (customerName.trim()) {
-    messageLines.push('', `Customer name: ${customerName.trim()}`);
-  }
-  if (customerPhone.trim()) {
-    messageLines.push(`Phone number: ${customerPhone.trim()}`);
-  }
-
-  messageLines.push('', 'Order details:');
-  entries.forEach((entry) => {
-    const variantPart = entry.selectedOption ? ` (${entry.selectedOption})` : '';
-    messageLines.push(`- ${entry.quantity} x ${entry.item.name}${variantPart}`);
-  });
-
-  if (instructions.trim()) {
-    messageLines.push('', `Special instructions: ${instructions.trim()}`);
-  }
-
-  if (arrangement) {
-    const arrangementText =
-      arrangement === 'Pickup'
-        ? `Pickup at ${BUSINESS_INFO.address} (subject to confirmation)`
-        : 'Delivery (subject to availability and confirmation by ANN BAKERY HOUSE)';
-    messageLines.push('', `Preferred arrangement: ${arrangementText}`);
-  }
-
-  messageLines.push(
-    '',
-    'Please confirm the prices and availability. Thank you!',
+  const hasPendingPricing = useMemo(
+    () => entries.some((entry) => entry.item.pricePhp === null),
+    [entries],
   );
 
-  const whatsappMessage = messageLines.join('\n');
-  const whatsappOrderUrl = buildWhatsAppUrl(whatsappMessage);
+  const bagSubtotal = useMemo(
+    () => entries.reduce((sum, entry) => sum + (entry.item.pricePhp ?? 0) * entry.quantity, 0),
+    [entries],
+  );
+
+  const buildMessage = (reference?: string): string => {
+    const lines: string[] = [`Hello ${BUSINESS_INFO.name}!`, ''];
+    if (reference) {
+      lines.push(`Order reference: ${reference}`);
+      lines.push('I would like to confirm this order.');
+    } else {
+      lines.push('I would like to place an order.');
+    }
+
+    if (customerName.trim()) {
+      lines.push('', `Customer name: ${customerName.trim()}`);
+    }
+    if (customerPhone.trim()) {
+      lines.push(`Phone number: ${customerPhone.trim()}`);
+    }
+
+    lines.push('', 'Order details:');
+    entries.forEach((entry) => {
+      const variantPart = entry.selectedOption ? ` (${entry.selectedOption})` : '';
+      lines.push(`- ${entry.quantity} x ${entry.item.name}${variantPart}`);
+    });
+
+    if (instructions.trim()) {
+      lines.push('', `Special instructions: ${instructions.trim()}`);
+    }
+
+    if (arrangement) {
+      const arrangementText =
+        arrangement === 'Pickup'
+          ? `Pickup at ${BUSINESS_INFO.address} (subject to confirmation)`
+          : 'Delivery (subject to availability and confirmation by ANN BAKERY HOUSE)';
+      lines.push('', `Preferred arrangement: ${arrangementText}`);
+    }
+
+    lines.push('', 'Please confirm the prices and availability. Thank you!');
+    return lines.join('\n');
+  };
+
+  const baseMessage = buildMessage();
+  const baseWhatsappUrl = buildWhatsAppUrl(baseMessage, whatsappDigits);
+
+  const validationError = !customerName.trim()
+    ? 'Please enter your name before ordering.'
+    : !customerPhone.trim()
+      ? 'Please enter your phone number before ordering.'
+      : !arrangement
+        ? 'Please select Pickup or Delivery.'
+        : null;
+
+  const handleSubmitOrder = async () => {
+    if (submitting || placedOrder) return;
+    if (validationError) {
+      setSubmitError(validationError);
+      return;
+    }
+
+    // Open the WhatsApp tab synchronously (inside the click gesture) so the
+    // browser does not block it. It is navigated ONLY after the order is recorded,
+    // so a failed save never opens WhatsApp as if the order were placed.
+    const waWindow = typeof window !== 'undefined' ? window.open('', '_blank') : null;
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    const result = await onSubmitOrder({
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      fulfillmentMethod: arrangement.toLowerCase() as 'pickup' | 'delivery',
+      notes: instructions.trim(),
+      lines: entries.map((entry) => ({
+        productSlug: entry.item.id,
+        quantity: entry.quantity,
+        selectedOption: entry.selectedOption,
+      })),
+      idempotencyKey: getCheckoutKey(signature),
+    });
+
+    setSubmitting(false);
+
+    if (!result.ok) {
+      if (waWindow) waWindow.close();
+      setRecordingUnavailable(result.notEnabled);
+      setSubmitError(result.error);
+      return;
+    }
+
+    const order = result.order;
+    const finalMessage = buildMessage(order.orderNumber);
+    const finalUrl = buildWhatsAppUrl(finalMessage, whatsappDigits);
+    setPlacedOrder(order);
+    setRecordingUnavailable(false);
+    onRecordOrder(finalMessage, finalUrl, totalCount, order);
+
+    if (waWindow) {
+      waWindow.location.href = finalUrl;
+    } else {
+      window.open(finalUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   const handleCopySaved = async () => {
     if (!lastSavedOrder) return;
@@ -142,7 +249,8 @@ export default function OrderDrawer({
 
   const handleCopyCurrent = async () => {
     try {
-      await navigator.clipboard.writeText(whatsappMessage);
+      const text = placedOrder ? buildMessage(placedOrder.orderNumber) : baseMessage;
+      await navigator.clipboard.writeText(text);
       setCopiedCurrent(true);
       setTimeout(() => setCopiedCurrent(false), 2000);
     } catch {
@@ -214,10 +322,7 @@ export default function OrderDrawer({
                 </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    onClear();
-                    setWhatsappAttempted(false);
-                  }}
+                  onClick={onClear}
                   className="inline-flex min-h-[40px] items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-[#5C5952] transition-colors hover:bg-[#FFFDF9] hover:text-[#AF140B]"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -283,10 +388,10 @@ export default function OrderDrawer({
                 ))}
               </ul>
 
-              {/* Customer Information & Special Instructions (Optional) */}
+              {/* Customer Information & Special Instructions */}
               <div className="space-y-3.5 rounded-xl border border-[#E8DFC8] bg-[#FFFDF9] p-4">
                 <p className="text-xs font-semibold tracking-wider text-[#111111] uppercase">
-                  Customer Details (Optional)
+                  Customer Details
                 </p>
 
                 <div>
@@ -372,36 +477,98 @@ export default function OrderDrawer({
                 </div>
               </div>
 
-              {whatsappAttempted && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-[#FD8F00] bg-[#FFFDF9] p-3.5 text-xs leading-relaxed text-[#111111]">
-                  <Info
-                    className="mt-0.5 h-4 w-4 shrink-0 text-[#AF140B]"
+              {placedOrder && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-[#3C5826]/40 bg-[#FFFDF9] p-3.5 text-xs leading-relaxed text-[#111111]">
+                  <BadgeCheck
+                    className="mt-0.5 h-4 w-4 shrink-0 text-[#3C5826]"
                     aria-hidden="true"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold">
-                      WhatsApp order link opened and message saved for review.
+                      Your order has been recorded. Reference: {placedOrder.orderNumber}
                     </p>
                     <p className="mt-0.5 text-[#5C5952]">
-                      Your order is not confirmed until ANN BAKERY HOUSE replies on WhatsApp to confirm prices and availability. If WhatsApp did not open in your browser, copy your message below and send it to {BUSINESS_INFO.whatsappDisplay}.
+                      We opened WhatsApp so you can send the summary of order{' '}
+                      <strong className="text-[#111111]">{placedOrder.orderNumber}</strong> to ANN BAKERY HOUSE. Your order is confirmed once the bakery replies with prices and availability. If WhatsApp did not open, use the button below.
                     </p>
-                    <button
-                      type="button"
-                      onClick={handleCopyCurrent}
-                      className="mt-2.5 inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[#DDD4BE] bg-[#FAF6EE] px-3 py-1.5 text-xs font-semibold text-[#111111] transition-colors hover:border-[#FD8F00]"
-                    >
-                      {copiedCurrent ? (
-                        <>
-                          <Check className="h-3.5 w-3.5 text-[#3C5826]" aria-hidden="true" />
-                          <span>Order Message Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                          <span>Copy Order Message</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      <a
+                        href={buildWhatsAppUrl(buildMessage(placedOrder.orderNumber), whatsappDigits)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#111111] px-3 py-1.5 text-xs font-semibold text-[#FFFDF9] transition-colors hover:bg-[#2A2A2A]"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5 text-[#FDD364]" aria-hidden="true" />
+                        <span>Reopen WhatsApp</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={handleCopyCurrent}
+                        className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[#DDD4BE] bg-[#FAF6EE] px-3 py-1.5 text-xs font-semibold text-[#111111] transition-colors hover:border-[#FD8F00]"
+                      >
+                        {copiedCurrent ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-[#3C5826]" aria-hidden="true" />
+                            <span>Order Message Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                            <span>Copy Order Message</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!placedOrder && submitError && (
+                <div
+                  role="alert"
+                  className={`flex items-start gap-2.5 rounded-xl border p-3.5 text-xs leading-relaxed text-[#111111] ${
+                    recordingUnavailable ? 'border-[#FD8F00]' : 'border-[#AF140B]/50'
+                  } bg-[#FFFDF9]`}
+                >
+                  {recordingUnavailable ? (
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#AF140B]" aria-hidden="true" />
+                  ) : (
+                    <AlertCircle
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[#AF140B]"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold">
+                      {recordingUnavailable
+                        ? 'Online order recording is not enabled yet.'
+                        : 'Your order could not be recorded.'}
+                    </p>
+                    <p className="mt-0.5 text-[#5C5952]">{submitError}</p>
+                    <p className="mt-0.5 text-[#5C5952]">
+                      {recordingUnavailable
+                        ? `No order was saved. You can still send your order directly to ${BUSINESS_INFO.whatsappDisplay} on WhatsApp.`
+                        : 'Nothing was confirmed. Please check your connection and try again, or send your order directly on WhatsApp below.'}
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleSubmitOrder()}
+                        disabled={submitting}
+                        className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#AF140B] px-3 py-1.5 text-xs font-semibold text-[#FFFDF9] transition-colors hover:bg-[#8E1009] disabled:opacity-60"
+                      >
+                        <span>Try again</span>
+                      </button>
+                      <a
+                        href={baseWhatsappUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-[#DDD4BE] bg-[#FAF6EE] px-3 py-1.5 text-xs font-semibold text-[#111111] transition-colors hover:border-[#FD8F00]"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Send on WhatsApp instead</span>
+                      </a>
+                    </div>
                   </div>
                 </div>
               )}
@@ -505,9 +672,9 @@ export default function OrderDrawer({
               <span className="text-xs font-semibold tracking-wider text-[#5C5952] uppercase">
                 Pricing Status
               </span>
-              <span className="text-right text-sm font-bold text-[#AF140B]">
+              <span className="text-right text-sm font-bold text-[#111111]">
                 <PriceLabel
-                  pricePhp={null}
+                  pricePhp={hasPendingPricing ? null : bagSubtotal}
                   pendingLabel="Price to be confirmed by ANN BAKERY HOUSE"
                   align="right"
                 />
@@ -516,19 +683,45 @@ export default function OrderDrawer({
             <p className="mb-3.5 text-xs leading-relaxed text-[#5C5952]">
               Final prices in PHP (₱) and arrangement details are confirmed directly by ANN BAKERY HOUSE via WhatsApp.
             </p>
-            <a
-              href={whatsappOrderUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => {
-                setWhatsappAttempted(true);
-                onRecordOrder(whatsappMessage, whatsappOrderUrl, totalCount);
-              }}
-              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#AF140B] px-5 py-3 text-sm font-semibold text-[#FFFDF9] shadow-sm transition-colors hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
-            >
-              <MessageCircle className="h-4 w-4 shrink-0 text-[#FDD364]" aria-hidden="true" />
-              <span>Send Order on WhatsApp</span>
-            </a>
+            {validationError && !placedOrder && (
+              <p className="mb-2 text-xs font-medium text-[#AF140B]">{validationError}</p>
+            )}
+            {placedOrder ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2 rounded-lg border border-[#3C5826]/40 bg-[#FAF6EE] px-4 py-3 text-center text-sm font-semibold text-[#3C5826]">
+                  <BadgeCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="tabular-nums">Recorded · {placedOrder.orderNumber}</span>
+                </div>
+                <a
+                  href={buildWhatsAppUrl(buildMessage(placedOrder.orderNumber), whatsappDigits)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#AF140B] px-5 py-3 text-sm font-semibold text-[#FFFDF9] shadow-sm transition-colors hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
+                >
+                  <MessageCircle className="h-4 w-4 shrink-0 text-[#FDD364]" aria-hidden="true" />
+                  <span>Reopen WhatsApp</span>
+                </a>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void handleSubmitOrder()}
+                disabled={submitting}
+                className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#AF140B] px-5 py-3 text-sm font-semibold text-[#FFFDF9] shadow-sm transition-colors hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
+                    <span>Recording your order…</span>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="h-4 w-4 shrink-0 text-[#FDD364]" aria-hidden="true" />
+                    <span>Confirm Order on WhatsApp</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
       </aside>

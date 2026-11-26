@@ -5,6 +5,12 @@ export interface SavedWhatsAppOrder {
   url: string;
   itemCount: number;
   savedAt: string;
+  /** Customer-facing reference of the recorded order, when it was recorded. */
+  orderNumber?: string;
+  /** Database id of the recorded order, when available. */
+  orderId?: string;
+  /** Recorded total in PHP, or null when a line price was still to be confirmed. */
+  totalPhp?: number | null;
 }
 
 const STORAGE_KEY = 'ann_bakery_last_whatsapp_order_v1';
@@ -31,6 +37,14 @@ export function loadLastWhatsAppOrder(): SavedWhatsAppOrder | null {
         url: safeUrl,
         itemCount: typeof parsed.itemCount === 'number' ? parsed.itemCount : 0,
         savedAt: parsed.savedAt,
+        orderNumber: typeof parsed.orderNumber === 'string' ? parsed.orderNumber : undefined,
+        orderId: typeof parsed.orderId === 'string' ? parsed.orderId : undefined,
+        totalPhp:
+          typeof parsed.totalPhp === 'number'
+            ? parsed.totalPhp
+            : parsed.totalPhp === null
+              ? null
+              : undefined,
       };
     }
     return null;

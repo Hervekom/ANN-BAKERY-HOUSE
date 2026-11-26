@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import {
+  BarChart3,
+  ClipboardList,
   ExternalLink,
   FileText,
   FolderTree,
@@ -14,9 +16,11 @@ import {
 } from 'lucide-react';
 import BrandLogo from '../components/BrandLogo';
 import { signOutAdmin, type AdminSessionInfo } from '../lib/auth';
+import AnalyticsSection from './sections/AnalyticsSection';
 import CategoriesSection from './sections/CategoriesSection';
 import ContentSection from './sections/ContentSection';
 import MediaSection from './sections/MediaSection';
+import OrdersSection from './sections/OrdersSection';
 import OverviewSection from './sections/OverviewSection';
 import ProductsSection from './sections/ProductsSection';
 import ReviewsSection from './sections/ReviewsSection';
@@ -25,6 +29,8 @@ import { Button } from './ui';
 
 type SectionId =
   | 'overview'
+  | 'analytics'
+  | 'orders'
   | 'products'
   | 'categories'
   | 'reviews'
@@ -40,6 +46,8 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'analytics', label: 'Sales Analytics', icon: BarChart3 },
+  { id: 'orders', label: 'Orders', icon: ClipboardList },
   { id: 'products', label: 'Products', icon: Package },
   { id: 'categories', label: 'Categories', icon: FolderTree },
   { id: 'reviews', label: 'Reviews', icon: MessageSquare },
@@ -53,7 +61,7 @@ const NAV: NavItem[] = [
  * active section.
  *
  * Desktop keeps the persistent sidebar. Mobile uses a compact top bar (showing
- * the active section) plus a slide-out drawer, so the seven sections remain
+ * the active section) plus a slide-out drawer, so all dashboard sections remain
  * reachable without an oversized dropdown or horizontal overflow.
  */
 export default function AdminDashboard({ session }: { session: AdminSessionInfo }) {
@@ -187,6 +195,8 @@ export default function AdminDashboard({ session }: { session: AdminSessionInfo 
 
         <main className="min-w-0 flex-1">
           {active === 'overview' && <OverviewSection session={session} onNavigate={setActive} />}
+          {active === 'analytics' && <AnalyticsSection session={session} />}
+          {active === 'orders' && <OrdersSection session={session} />}
           {active === 'products' && <ProductsSection session={session} />}
           {active === 'categories' && <CategoriesSection session={session} />}
           {active === 'reviews' && <ReviewsSection session={session} />}

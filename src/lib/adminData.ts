@@ -1,6 +1,9 @@
 import { requireSupabase, supabase } from './supabase';
 import {
   CategoryRow,
+  OrderRow,
+  OrderStatus,
+  OrderWithItems,
   ProductOptionRow,
   ProductRow,
   ProductWithRelations,
@@ -222,6 +225,41 @@ export async function replaceProductOptions(
   } catch (e) {
     return { data: null, error: errorMessage(e, 'Unable to save product variants.'), missingRelation: isMissingRelation(e) };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Orders (Sales Analytics)
+// ---------------------------------------------------------------------------
+
+/**
+ * Reads recorded orders with their line-item snapshots, newest first.
+ * Returns `missingRelation = true` when the 004_orders.sql migration has not
+ * been applied yet, so the analytics screen can explain the setup step instead
+ * of failing with a raw error.
+ */
+export function listOrders(): Promise<DbResult<OrderWithItems[]>> {
+  return q<OrderWithItems[]>((c) =>
+    c
+      .from('orders')
+      .select('*, order_items(*)')
+      .order('placed_at', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+}
+
+/**
+ * Changes an order's lifecycle status. `completed_at` is stamped when the order
+ * becomes 'completed' and cleared otherwise, so completed-sale revenue stays
+ * accurate in analytics. RLS restricts this to administrators.
+ */
+export function updateOrderStatus(id: string, status: OrderStatus): Promise<DbResult<OrderRow>> {
+  const patch: { status: OrderStatus; completed_at: string | null } = {
+    status,
+    completed_at: status === 'completed' ? new Date().toISOString() : null,
+  };
+  return q<OrderRow>((c) =>
+    c.from('orders').update(patch).eq('id', id).select('*').single(),
+  );
 }
 
 // ---------------------------------------------------------------------------

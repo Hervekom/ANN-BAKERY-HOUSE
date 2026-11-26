@@ -70,6 +70,50 @@ export interface SiteSettingRow {
   updated_by: string | null;
 }
 
+export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'completed' | 'cancelled';
+export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
+
+export interface OrderRow {
+  id: string;
+  order_number: string;
+  customer_id: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  channel: string;
+  fulfillment_method: 'pickup' | 'delivery';
+  status: OrderStatus;
+  payment_status: PaymentStatus;
+  currency: string;
+  subtotal_php: number | null;
+  total_php: number | null;
+  notes: string | null;
+  placed_at: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Immutable line snapshot captured at purchase time (see 004_orders.sql). */
+export interface OrderItemRow {
+  id: string;
+  order_id: string;
+  product_id: string | null;
+  product_name: string;
+  product_slug: string | null;
+  category_id: string | null;
+  category_name: string | null;
+  unit_price_php: number | null;
+  quantity: number;
+  line_total_php: number | null;
+  selected_option: string | null;
+  created_at: string;
+}
+
+/** An order joined with its line items (admin analytics). */
+export interface OrderWithItems extends OrderRow {
+  order_items: OrderItemRow[];
+}
+
 export interface ProfileRow {
   id: string;
   full_name: string | null;
@@ -109,8 +153,10 @@ interface PostgrestLikeError {
 export function isMissingRelation(error: unknown): boolean {
   if (!error) return false;
   const e = error as PostgrestLikeError;
-  if (e.code === '42P01' || e.code === 'PGRST205') return true;
-  return typeof e.message === 'string' && /does not exist|schema cache|could not find the table/i.test(e.message);
+  if (e.code === '42P01' || e.code === 'PGRST205' || e.code === 'PGRST202' || e.code === '42883') {
+    return true;
+  }
+  return typeof e.message === 'string' && /does not exist|schema cache|could not find the (table|function)/i.test(e.message);
 }
 
 /** Extracts a human-readable message from a Supabase/PostgREST error. */

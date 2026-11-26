@@ -6,16 +6,32 @@ import {
   PublicReviewsResponse,
   ReviewStatus,
 } from '../types/account';
+import { supabase } from '../lib/supabase';
 
 // Keep Bearer tokens exclusively in JS memory (never in localStorage or sessionStorage).
+// NOTE: For Supabase Auth, the client handles the session. These tokens are kept
+// for compatibility with any remaining legacy /api endpoints.
 let customerToken: string | null = null;
 let adminToken: string | null = null;
+
+function toCustomerUser(user: any, profile?: any): CustomerUser {
+  return {
+    id: user.id,
+    name: profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || 'Customer',
+    email: user.email || '',
+    role: (user.app_metadata?.role as any) || 'customer',
+    createdAt: user.created_at,
+  };
+}
 
 async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
   tokenKind: 'none' | 'customer' | 'admin' = 'none',
 ): Promise<T> {
+  // If we are using Supabase, we should ideally get the session token here.
+  // For now, we preserve the legacy memory-token behavior to avoid breaking
+  // the admin moderator or reviews endpoints if they still rely on server.ts.
   const headers = new Headers(options.headers);
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -64,44 +80,80 @@ export async function registerCustomer(payload: {
   password: string;
   confirmPassword: string;
 }): Promise<CustomerUser> {
-  const result = await apiRequest<{ token: string; user: CustomerUser }>('/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify(payload),
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  if (payload.password !== payload.confirmPassword) {
+    throw new Error('Password and password confirmation do not match.');
+  }
+
+  const { data, error } = await supabase.auth.signUp({
+    email: payload.email,
+    password: payload.password,
+    options: {
+      data: {
+        full_name: payload.name.trim(),
+      },
+    },
   });
-  customerToken = result.token;
-  return result.user;
+
+  if (error) throw error;
+  if (!data.user) throw new Error('Account creation failed.');
+
+  // If email confirmation is required, the session will be null.
+  if (!data.session) {
+    throw new Error('Account created! Please check your email to confirm your account before signing in.');
+  }
+
+  return toCustomerUser(data.user);
 }
 
 export async function loginCustomer(payload: {
   email: string;
   password: string;
 }): Promise<CustomerUser> {
-  const result = await apiRequest<{ token: string; user: CustomerUser }>('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(payload),
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: payload.email,
+    password: payload.password,
   });
-  customerToken = result.token;
-  return result.user;
+
+  if (error) throw error;
+  if (!data.user) throw new Error('Sign in failed.');
+
+  return toCustomerUser(data.user);
 }
 
 export async function logoutCustomer(): Promise<void> {
-  try {
-    await apiRequest('/api/auth/logout', { method: 'POST' }, 'customer');
-  } finally {
-    customerToken = null;
-  }
+  if (!supabase) return;
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+  customerToken = null;
 }
 
 export async function updateCustomerProfile(name: string): Promise<CustomerUser> {
-  const result = await apiRequest<{ user: CustomerUser }>(
-    '/api/auth/profile',
-    {
-      method: 'PATCH',
-      body: JSON.stringify({ name }),
-    },
-    'customer',
-  );
-  return result.user;
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error('You must be signed in to update your profile.');
+
+  // 1. Update auth metadata (for the session)
+  const { error: authError } = await supabase.auth.updateUser({
+    data: { full_name: name.trim() },
+  });
+  if (authError) throw authError;
+
+  // 2. Update the public.profiles table (for RLS and other queries)
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .update({ full_name: name.trim() })
+    .eq('id', user.id)
+    .select()
+    .single();
+
+  if (profileError) throw profileError;
+
+  return toCustomerUser(user, profile);
 }
 
 export async function changeCustomerPassword(payload: {
@@ -109,26 +161,36 @@ export async function changeCustomerPassword(payload: {
   newPassword: string;
   confirmPassword: string;
 }): Promise<{ message: string }> {
-  return apiRequest<{ message: string }>(
-    '/api/auth/change-password',
-    {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    },
-    'customer',
-  );
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  if (payload.newPassword !== payload.confirmPassword) {
+    throw new Error('New password and confirmation do not match.');
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: payload.newPassword,
+  });
+
+  if (error) throw error;
+
+  return { message: 'Your password has been updated securely.' };
 }
 
 export async function requestPasswordReset(
   email: string,
 ): Promise<{ emailDeliveryConfigured: boolean; message: string }> {
-  return apiRequest<{ emailDeliveryConfigured: boolean; message: string }>(
-    '/api/auth/forgot-password',
-    {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    },
-  );
+  if (!supabase) throw new Error('Supabase is not configured.');
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+
+  if (error) throw error;
+
+  return {
+    emailDeliveryConfigured: true,
+    message: 'If an account exists for this email, you will receive a password reset link shortly.',
+  };
 }
 
 export async function fetchApprovedReviews(): Promise<PublicReviewsResponse> {
