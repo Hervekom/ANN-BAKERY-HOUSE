@@ -541,7 +541,7 @@ export default function ProductsSection({ session }: { session: AdminSessionInfo
                                 : prev,
                             )
                           }
-                          className="rounded-lg border border-[#AF140B]/30 px-2.5 py-2 text-[#AF140B] hover:bg-[#AF140B] hover:text-[#FFFDF9]"
+                          className="rounded-lg border border-[#AF140B]/30 px-2.5 py-2 text-[#AF140B] hover:bg-[#7E22CE] hover:text-[#FFFDF9]"
                         >
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </button>

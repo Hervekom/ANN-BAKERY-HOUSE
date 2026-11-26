@@ -281,6 +281,37 @@ tab and no redirect.
 
 ---
 
+## 6.3 CHANGED — Brand red buttons recoloured to purple (2026-11-26)
+
+**Request:** to align with the restaurant's colours, the **red of the buttons** was
+changed to **purple**.
+
+**Choice (confirmed by the owner):**
+- Purple shade = **Prune `#7E22CE`** (hover `#6B21A8`).
+- Scope = **buttons / active states only** — red *accents* (text, icons, badges,
+  notices, charts) are intentionally **left unchanged**.
+
+**Mapping applied:** solid `bg-[#AF140B]` → `bg-[#7E22CE]`; `hover:bg-[#8E1009]` →
+`hover:bg-[#6B21A8]`.
+
+**Files touched (button backgrounds + active tab states):**
+`src/App.tsx` (category tab active state, "Show Full Menu", "Review & Send Order"),
+`src/components/OrderDrawer.tsx`, `DishModal.tsx`, `MenuCard.tsx`, `HeroSection.tsx`,
+`AboutSection.tsx`, `Navbar.tsx`, `CustomerProfileModal.tsx`,
+`src/admin/AdminDashboard.tsx` (active tabs), `src/admin/ui.tsx` (primary button
+variant), `src/admin/sections/OverviewSection.tsx`, `AnalyticsSection.tsx`,
+`ReviewsSection.tsx`, `ProductsSection.tsx`.
+
+**Intentionally NOT changed (accents, not buttons):** translucent accent chips and
+notices (`bg-[#AF140B]/10`, `/8`, `/30`), red text/icons, chart palette colours,
+and the admin load progress bar — e.g. `AuthModal`, `components/ReviewsSection`,
+`admin/ImageField`, `admin/sections/OrdersSection`, `admin/charts.tsx`.
+
+**Verification:** `npm run lint` → 0 errors; `npm run build` → success. A control
+`grep` confirms no solid button background still uses `#AF140B`.
+
+---
+
 ## 7. Ongoing pricing task and progress (unchanged by the cart fix)
 
 **Task:** Make product prices display correctly end to end.
@@ -301,17 +332,13 @@ tab and no redirect.
 ## 8. Build / lint status and latest Git status
 
 - `npm run lint` (`tsc --noEmit`) → **0 errors**
-- `npm run build` (`vite build`) → **success** (single JS bundle ≈ 818.65 kB; only
+- `npm run build` (`vite build`) → **success** (single JS bundle ≈ 822 kB; only
   the standard "chunks > 500 kB" warning)
 - Branch: `main`
-- Latest commit: `f049c74` — "fix(menu): live-resolve shared products and keep
-  mobile inputs visible"
-- Working tree (after the cart fix, **not committed** per instruction):
-  - modified: `src/components/OrderDrawer.tsx` (hooks-order fix)
-  - modified: `PROJECT_CONTEXT.md` (this document)
-  - untracked: `.vercel/`, `.vercelignore` (local Vercel artifacts; keep out of
-    commits)
-- No commit / push / deploy was performed for this fix (instructed not to).
+- Recent fixes shipped on `main`: cart hooks-order fix, cart persistence, on-site
+  order confirmation popup (no WhatsApp redirect), and the purple button recolour
+  (§6–§6.3).
+- Local-only artifacts: `.vercel/`, `.vercelignore` (keep out of commits).
 
 ---
 

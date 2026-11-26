@@ -149,7 +149,7 @@ export default function AdminDashboard({ session }: { session: AdminSessionInfo 
                     onClick={() => select(item.id)}
                     className={`mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold transition-colors ${
                       isActive
-                        ? 'bg-[#AF140B] text-[#FFFDF9]'
+                        ? 'bg-[#7E22CE] text-[#FFFDF9]'
                         : 'text-[#5C5952] hover:bg-[#FFFDF9] hover:text-[#111111]'
                     }`}
                   >
@@ -181,7 +181,7 @@ export default function AdminDashboard({ session }: { session: AdminSessionInfo 
                   onClick={() => select(item.id)}
                   className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                     isActive
-                      ? 'bg-[#AF140B] text-[#FFFDF9]'
+                      ? 'bg-[#7E22CE] text-[#FFFDF9]'
                       : 'text-[#5C5952] hover:bg-[#FFFDF9] hover:text-[#111111]'
                   }`}
                 >

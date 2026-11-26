@@ -198,7 +198,7 @@ export default function DishModal({
                 onAdd(item, chosenOption, qty);
                 onClose();
               }}
-              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-[#AF140B] px-6 py-2.5 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#8E1009]"
+              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-[#7E22CE] px-6 py-2.5 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#6B21A8]"
             >
               <Plus className="h-4 w-4 text-[#FDD364]" aria-hidden="true" />
               <span>

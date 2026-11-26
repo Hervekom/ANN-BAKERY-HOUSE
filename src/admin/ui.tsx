@@ -36,10 +36,10 @@ export function SectionTitle({
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'gold';
 
 const BUTTON_STYLES: Record<ButtonVariant, string> = {
-  primary: 'bg-[#AF140B] text-[#FFFDF9] hover:bg-[#8E1009]',
+  primary: 'bg-[#7E22CE] text-[#FFFDF9] hover:bg-[#6B21A8]',
   gold: 'bg-[#FDD364] text-[#111111] hover:bg-[#FD8F00]',
   secondary: 'border border-[#DDD4BE] bg-[#FFFDF9] text-[#111111] hover:border-[#FD8F00]',
-  danger: 'border border-[#AF140B]/30 bg-[#FFFDF9] text-[#AF140B] hover:bg-[#AF140B] hover:text-[#FFFDF9]',
+  danger: 'border border-[#AF140B]/30 bg-[#FFFDF9] text-[#AF140B] hover:bg-[#7E22CE] hover:text-[#FFFDF9]',
   ghost: 'text-[#5C5952] hover:bg-[#FAF6EE] hover:text-[#111111]',
 };
 

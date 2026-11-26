@@ -111,7 +111,7 @@ export default function AboutSection({ settings }: { settings?: SiteSettings }) 
               <div className="mt-5">
                 <a
                   href="#menu"
-                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-[#AF140B] px-6 py-3 text-sm font-semibold text-[#FFFDF9] shadow-xs transition-all duration-150 hover:-translate-y-0.5 hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00] sm:w-auto"
+                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-[#7E22CE] px-6 py-3 text-sm font-semibold text-[#FFFDF9] shadow-xs transition-all duration-150 hover:-translate-y-0.5 hover:bg-[#6B21A8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00] sm:w-auto"
                 >
                   <span>Explore Our Menu</span>
                   <ArrowRight className="h-4 w-4 shrink-0 text-[#FDD364]" aria-hidden="true" />

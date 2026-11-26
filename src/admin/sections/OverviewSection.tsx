@@ -152,7 +152,7 @@ export default function OverviewSection({
             <button
               type="button"
               onClick={() => onNavigate('reviews')}
-              className="mt-3 inline-flex min-h-[40px] items-center rounded-lg bg-[#AF140B] px-4 py-2 text-sm font-semibold text-[#FFFDF9] hover:bg-[#8E1009]"
+              className="mt-3 inline-flex min-h-[40px] items-center rounded-lg bg-[#7E22CE] px-4 py-2 text-sm font-semibold text-[#FFFDF9] hover:bg-[#6B21A8]"
             >
               Open reviews
             </button>

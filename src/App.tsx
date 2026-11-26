@@ -547,7 +547,7 @@ export default function App() {
                       onClick={() => setActiveCategory(category)}
                       className={`inline-flex min-h-[42px] items-center gap-1.5 whitespace-nowrap shrink-0 snap-start rounded-lg border px-4 py-2 text-xs font-semibold transition-colors duration-150 sm:min-h-[38px] sm:border-0 sm:px-3.5 sm:py-1.5 ${
                         isActive
-                          ? 'border-[#AF140B] bg-[#AF140B] text-[#FFFDF9]'
+                          ? 'border-[#7E22CE] bg-[#7E22CE] text-[#FFFDF9]'
                           : 'border-[#E8DFC8] bg-[#FFFDF9] text-[#5C5952] hover:bg-[#FDD364]/30 hover:text-[#111111] sm:bg-transparent'
                       }`}
                     >
@@ -580,7 +580,7 @@ export default function App() {
                     setSearchQuery('');
                     setActiveCategory('All');
                   }}
-                  className="mt-4 min-h-[44px] rounded-lg bg-[#AF140B] px-5 py-2.5 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#8E1009]"
+                  className="mt-4 min-h-[44px] rounded-lg bg-[#7E22CE] px-5 py-2.5 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#6B21A8]"
                 >
                   Show Full Menu
                 </button>
@@ -661,7 +661,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setBagOpen(true)}
-                      className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-[#AF140B] px-5 py-2.5 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#8E1009] sm:w-auto"
+                      className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-[#7E22CE] px-5 py-2.5 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#6B21A8] sm:w-auto"
                     >
                       <ShoppingBag className="h-4 w-4 text-[#FDD364]" aria-hidden="true" />
                       <span>Review & Send Order</span>

@@ -191,7 +191,7 @@ export default function AnalyticsSection({ session }: { session: AdminSessionInf
                   onClick={() => setPreset(option.value)}
                   className={`min-h-[38px] rounded-lg border px-3 text-xs font-semibold transition-colors ${
                     isActive
-                      ? 'border-[#AF140B] bg-[#AF140B] text-[#FFFDF9]'
+                      ? 'border-[#AF140B] bg-[#7E22CE] text-[#FFFDF9]'
                       : 'border-[#DDD4BE] bg-[#FFFDF9] text-[#5C5952] hover:border-[#FD8F00] hover:text-[#111111]'
                   }`}
                 >

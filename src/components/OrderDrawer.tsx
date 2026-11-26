@@ -315,7 +315,7 @@ export default function OrderDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-5 min-h-[48px] rounded-lg bg-[#AF140B] px-6 py-2.5 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#8E1009]"
+                className="mt-5 min-h-[48px] rounded-lg bg-[#7E22CE] px-6 py-2.5 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#6B21A8]"
               >
                 Browse Menu
               </button>
@@ -562,7 +562,7 @@ export default function OrderDrawer({
                         type="button"
                         onClick={() => void handleSubmitOrder()}
                         disabled={submitting}
-                        className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#AF140B] px-3 py-1.5 text-xs font-semibold text-[#FFFDF9] transition-colors hover:bg-[#8E1009] disabled:opacity-60"
+                        className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#7E22CE] px-3 py-1.5 text-xs font-semibold text-[#FFFDF9] transition-colors hover:bg-[#6B21A8] disabled:opacity-60"
                       >
                         <span>Try again</span>
                       </button>
@@ -703,7 +703,7 @@ export default function OrderDrawer({
                   href={buildWhatsAppUrl(buildMessage(placedOrder.orderNumber), whatsappDigits)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#AF140B] px-5 py-3 text-sm font-semibold text-[#FFFDF9] shadow-sm transition-colors hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
+                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#7E22CE] px-5 py-3 text-sm font-semibold text-[#FFFDF9] shadow-sm transition-colors hover:bg-[#6B21A8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
                 >
                   <MessageCircle className="h-4 w-4 shrink-0 text-[#FDD364]" aria-hidden="true" />
                   <span>Send on WhatsApp</span>
@@ -714,7 +714,7 @@ export default function OrderDrawer({
                 type="button"
                 onClick={() => void handleSubmitOrder()}
                 disabled={submitting}
-                className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#AF140B] px-5 py-3 text-sm font-semibold text-[#FFFDF9] shadow-sm transition-colors hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00] disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-[#7E22CE] px-5 py-3 text-sm font-semibold text-[#FFFDF9] shadow-sm transition-colors hover:bg-[#6B21A8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {submitting ? (
                   <>
@@ -772,7 +772,7 @@ export default function OrderDrawer({
                 setShowSuccess(false);
                 onClose();
               }}
-              className="mt-5 inline-flex min-h-[48px] w-full items-center justify-center rounded-lg bg-[#AF140B] px-5 py-3 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
+              className="mt-5 inline-flex min-h-[48px] w-full items-center justify-center rounded-lg bg-[#7E22CE] px-5 py-3 text-sm font-semibold text-[#FFFDF9] transition-colors hover:bg-[#6B21A8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
             >
               Continue browsing
             </button>

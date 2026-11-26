@@ -111,7 +111,7 @@ export default function ReviewsSection({ session }: { session: AdminSessionInfo 
               onClick={() => setFilter(tab.id)}
               className={`inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold transition-colors ${
                 isActive
-                  ? 'border-[#AF140B] bg-[#AF140B] text-[#FFFDF9]'
+                  ? 'border-[#7E22CE] bg-[#7E22CE] text-[#FFFDF9]'
                   : 'border-[#E8DFC8] bg-[#FFFDF9] text-[#5C5952] hover:text-[#111111]'
               }`}
             >

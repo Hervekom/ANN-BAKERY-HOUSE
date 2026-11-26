@@ -111,7 +111,7 @@ export default function HeroSection({ settings }: { settings?: SiteSettings }) {
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2.5 whitespace-nowrap rounded-lg border border-[#FDD364]/75 bg-[#AF140B] px-6 py-3 text-sm font-semibold text-[#FFFDF9] shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FDD364] sm:w-auto sm:px-7"
+              className="inline-flex min-h-[48px] w-full items-center justify-center gap-2.5 whitespace-nowrap rounded-lg border border-[#FDD364]/75 bg-[#7E22CE] px-6 py-3 text-sm font-semibold text-[#FFFDF9] shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#6B21A8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FDD364] sm:w-auto sm:px-7"
             >
               <MessageCircle className="h-4 w-4 shrink-0 text-[#FDD364]" aria-hidden="true" />
               <span>Order on WhatsApp</span>

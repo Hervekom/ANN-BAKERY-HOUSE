@@ -145,7 +145,7 @@ export default function MenuCard({
             <button
               type="button"
               onClick={() => onAdd(item, selectedOption)}
-              className="inline-flex min-h-[44px] items-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg bg-[#AF140B] px-4 py-2 text-sm font-semibold text-[#FFFDF9] transition-colors duration-150 hover:bg-[#8E1009] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
+              className="inline-flex min-h-[44px] items-center gap-1.5 whitespace-nowrap shrink-0 rounded-lg bg-[#7E22CE] px-4 py-2 text-sm font-semibold text-[#FFFDF9] transition-colors duration-150 hover:bg-[#6B21A8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FD8F00]"
             >
               <Plus className="h-4 w-4 text-[#FDD364]" aria-hidden="true" />
               <span>Add to Order</span>

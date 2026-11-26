@@ -368,7 +368,7 @@ export default function CustomerProfileModal({
               onSignOut();
               onClose();
             }}
-            className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-[#AF140B]/30 bg-[#FFFDF9] px-5 py-2.5 text-sm font-semibold text-[#AF140B] transition-colors hover:bg-[#AF140B] hover:text-[#FFFDF9] sm:w-auto"
+            className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-[#AF140B]/30 bg-[#FFFDF9] px-5 py-2.5 text-sm font-semibold text-[#AF140B] transition-colors hover:bg-[#7E22CE] hover:text-[#FFFDF9] sm:w-auto"
           >
             <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span>Sign Out</span>
