@@ -122,8 +122,6 @@ export default function OrderDrawer({
     return () => window.removeEventListener('keydown', handleKey);
   }, [open, onClose]);
 
-  if (!open) return null;
-
   const totalCount = entries.reduce((sum, entry) => sum + entry.quantity, 0);
 
   const hasPendingPricing = useMemo(
@@ -143,6 +141,13 @@ export default function OrderDrawer({
       ),
     [entries],
   );
+
+  // This early return MUST stay after every hook in this component. Returning
+  // before the `useMemo` calls above changed the number of hooks between the
+  // closed (15) and open (17) render, which made React throw "Rendered more
+  // hooks than during the previous render" and blank the whole page the moment
+  // the cart was opened.
+  if (!open) return null;
 
   const buildMessage = (reference?: string): string => {
     const lines: string[] = [`Hello ${BUSINESS_INFO.name}!`, ''];
