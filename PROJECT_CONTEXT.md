@@ -340,6 +340,24 @@ unchanged.
 
 ---
 
+## 6.5 CHANGED — Variant options now show their own price (2026-11-27)
+
+**Request:** when a product has variants/options with prices, each option should be
+presented (like the existing "Rice / Fried Plantain" chooser) **and each option
+button must show its own price**.
+
+**Change:** in `src/components/MenuCard.tsx` and `src/components/DishModal.tsx`,
+each option button now renders the option name followed by its price when a price
+exists (`formatPhp(option.pricePhp)`). Options without a price keep showing the
+name only — prices are still never invented. The option price uses a muted tone
+normally and the gold accent when the option is selected, so it stays readable.
+The card/modal headline price already follows the selected option via
+`getUnitPrice`.
+
+**Verification:** `npm run lint` → 0 errors; `npm run build` → success.
+
+---
+
 ## 7. Ongoing pricing task and progress (unchanged by the cart fix)
 
 **Task:** Make product prices display correctly end to end.

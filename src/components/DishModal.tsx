@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MessageCircle, Minus, Plus, UtensilsCrossed, X } from 'lucide-react';
-import { BUSINESS_INFO, MenuItem, buildWhatsAppUrl, getUnitPrice } from '../data/menu';
+import { BUSINESS_INFO, MenuItem, buildWhatsAppUrl, formatPhp, getUnitPrice } from '../data/menu';
 import PriceLabel from './PriceLabel';
 
 interface DishModalProps {
@@ -136,13 +136,22 @@ export default function DishModal({
                         setChosenOption(option.name);
                         onSelectOption?.(item.id, option.name);
                       }}
-                      className={`min-h-[42px] whitespace-nowrap rounded-lg border px-4 py-1.5 text-xs font-semibold transition-colors ${
+                      className={`inline-flex min-h-[42px] items-center gap-1.5 whitespace-nowrap rounded-lg border px-4 py-1.5 text-xs font-semibold transition-colors ${
                         isSelected
                           ? 'border-[#111111] bg-[#111111] text-[#FFFDF9]'
                           : 'border-[#DDD4BE] bg-[#FFFDF9] text-[#111111] hover:border-[#FD8F00]'
                       }`}
                     >
-                      {option.name}
+                      <span>{option.name}</span>
+                      {option.pricePhp !== null && (
+                        <span
+                          className={`tabular-nums font-medium ${
+                            isSelected ? 'text-[#FDD364]' : 'text-[#5C5952]'
+                          }`}
+                        >
+                          {formatPhp(option.pricePhp)}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

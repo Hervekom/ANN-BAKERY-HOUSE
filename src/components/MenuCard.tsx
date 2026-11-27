@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Minus, Plus, Share2, UtensilsCrossed } from 'lucide-react';
-import { MenuItem, getPriceRange, getUnitPrice } from '../data/menu';
+import { MenuItem, formatPhp, getPriceRange, getUnitPrice } from '../data/menu';
 import PriceLabel from './PriceLabel';
 
 interface MenuCardProps {
@@ -107,13 +107,22 @@ export default function MenuCard({
                     key={option.name}
                     type="button"
                     onClick={() => onSelectOption(option.name)}
-                    className={`min-h-[40px] whitespace-nowrap rounded-md border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                    className={`inline-flex min-h-[40px] items-center gap-1.5 whitespace-nowrap rounded-md border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                       isSelected
                         ? 'border-[#111111] bg-[#111111] text-[#FFFDF9]'
                         : 'border-[#DDD4BE] bg-[#FAF6EE] text-[#111111] hover:border-[#FD8F00]'
                     }`}
                   >
-                    {option.name}
+                    <span>{option.name}</span>
+                    {option.pricePhp !== null && (
+                      <span
+                        className={`tabular-nums font-medium ${
+                          isSelected ? 'text-[#FDD364]' : 'text-[#5C5952]'
+                        }`}
+                      >
+                        {formatPhp(option.pricePhp)}
+                      </span>
+                    )}
                   </button>
                 );
               })}
