@@ -312,6 +312,34 @@ and the admin load progress bar — e.g. `AuthModal`, `components/ReviewsSection
 
 ---
 
+## 6.4 FIXED — Admin image upload failed on mobile (2026-11-27)
+
+**Symptom:** in the admin dashboard, images could be uploaded from a computer, but
+on a phone the file/gallery picker would not open.
+
+**Root cause:** in `src/admin/ImageField.tsx` the native file input was hidden with
+`className="hidden"` (`display: none`) and the picker was opened by calling
+`inputRef.current.click()` from the button's `onClick`. Programmatically clicking a
+`display: none` file input is unreliable on several mobile browsers (notably iOS
+Safari), so the gallery never opened on a phone — while it worked fine on desktop.
+
+**Fix (native activation, no JS gesture needed):**
+- The "Choose from Gallery" and "Upload new image" controls are now `<label
+  htmlFor>` elements bound (via `useId`) to the native `<input type="file"
+  accept="image/*">`. Tapping the label lets the browser open the picker natively —
+  the most reliable path on both mobile and desktop.
+- The input is now `className="sr-only"` (visually hidden but **not**
+  `display: none`), which keeps programmatic/native activation working.
+- The `inputRef` / `useRef` programmatic-click wiring was removed.
+
+**Constraints preserved:** still a native `type="file"` + `accept="image/*"` input;
+controls keep a ≥ 40px touch target; JPEG/PNG/WebP/AVIF, 5 MB max validation
+unchanged.
+
+**Verification:** `npm run lint` → 0 errors; `npm run build` → success.
+
+---
+
 ## 7. Ongoing pricing task and progress (unchanged by the cart fix)
 
 **Task:** Make product prices display correctly end to end.
